@@ -38,6 +38,10 @@ backup:
 urls:
   - "smartfritz: https://{{ smartfritz_host }}"
 
+# how the start and status pages show it
+pages:
+  grow: {label: Grow lights (smartfritz), about: Light schedules and grow history for the plugs}
+
 logins:
   - label: smartfritz
     password: app_password
@@ -49,6 +53,7 @@ nginx:
     server: "{{ container_prefix }}-smartfritz:8080"
   server_name: "{{ smartfritz_host }}"
   proxy_pass: "http://smartfritz"
+  onion: true          # works as a hidden service (with onion: tls on the machine: its cookie is a secure one)
   websocket: false
   client_max_body_size: "64k"
   comment: smartfritz
