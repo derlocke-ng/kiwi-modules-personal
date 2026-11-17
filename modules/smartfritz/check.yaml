@@ -1,0 +1,5 @@
+# made-up values, for tools/check-modules.py only
+settings:
+  fritz_url: https://192.168.2.1
+  fritz_user: grow
+  fritz_password: check-only-not-a-password

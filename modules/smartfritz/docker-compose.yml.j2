@@ -1,0 +1,25 @@
+# smartfritz — light schedules for plugs on a FRITZ!Box
+# On the stack network, not inside the VPN client: it needs the LAN, and a VPN restart must not stop the schedule.
+services:
+  {{ container_prefix }}-smartfritz:
+    image: {{ image }}
+    container_name: {{ container_prefix }}-smartfritz
+    environment:
+      - SMARTFRITZ_FRITZ_URL={{ fritz_url }}
+      - SMARTFRITZ_FRITZ_USER={{ fritz_user }}
+      - SMARTFRITZ_FRITZ_PASSWORD={{ fritz_password }}
+      - SMARTFRITZ_APP_PASSWORD={{ app_password }}
+      - TZ={{ timezone }}
+    networks:
+      {{ network_name }}:
+        ipv4_address: {{ container_ip }}
+    read_only: true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+    volumes:
+      - {{ docker_dir }}/{{ container_prefix }}-smartfritz:/data:z

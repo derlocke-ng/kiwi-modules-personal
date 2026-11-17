@@ -1,0 +1,78 @@
+schema_version: "1.0"
+
+module:
+  name: smartfritz
+  title: smartfritz
+  version: 0.1.0
+  description: "Light schedules and grow history for plugs on a FRITZ!Box, behind the reverse proxy"
+  category: productivity
+  node_types: [node]
+
+dependencies:
+  required: [vpn-client, reverse-proxy]
+  optional: []
+
+network:
+  listen_ports: ["8080/tcp"]
+  needs_vpn_dnat: true
+  open_ports: []
+
+firewall:
+  scope: vpn-client
+  rules: []
+
+templates:
+  compose: docker-compose.yml.j2
+
+derived:
+  smartfritz_host: "{{ smartfritz_domain or 'grow.' ~ hostname }}"
+
+storage:
+  bind_mounts:
+    - { host: "${DOCKERDIR}/{{ container_prefix }}-smartfritz", type: dir, required: true }
+
+backup:
+  frozen:
+    containers: ["{{ container_prefix }}-smartfritz"]
+    paths: ["${DOCKERDIR}/{{ container_prefix }}-smartfritz"]
+
+urls:
+  - "smartfritz: https://{{ smartfritz_host }}"
+
+nginx:
+  upstream:
+    name: smartfritz
+    server: "{{ container_prefix }}-smartfritz:8080"
+  server_name: "{{ smartfritz_host }}"
+  proxy_pass: "http://smartfritz"
+  websocket: false
+  client_max_body_size: "64k"
+  comment: smartfritz
+
+settings:
+  - key: fritz_url
+    label: FRITZ!Box address
+    help: "An address, not a name: the lights should not depend on DNS, and fritz.box is a public name that may not lead to your box."
+    placeholder: https://192.168.2.1
+    required: true
+    pattern: 'https?://[0-9A-Za-z.:\[\]-]+'
+  - key: fritz_user
+    label: FRITZ!Box user
+    help: "A user with the Smart Home right and nothing else."
+    required: true
+  - key: fritz_password
+    type: secret
+    label: FRITZ!Box password
+    required: true
+  - key: app_password
+    type: secret
+    label: Web page password
+    generate: true
+  - key: smartfritz_domain
+    label: Name
+    help: "Empty: grow.<hostname>."
+    default: ""
+    pattern: '[a-z0-9.-]*'
+  - key: image
+    group: Advanced
+    default: ghcr.io/derlocke-ng/smartfritz:latest
