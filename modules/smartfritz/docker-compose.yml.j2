@@ -9,6 +9,7 @@ services:
       - SMARTFRITZ_FRITZ_USER={{ fritz_user }}
       - SMARTFRITZ_FRITZ_PASSWORD={{ fritz_password }}
       - SMARTFRITZ_APP_PASSWORD={{ app_password }}
+      - SMARTFRITZ_FRITZ_CERT_AUTO={{ '1' if cert_auto else '0' }}
       - TZ={{ timezone }}
     networks:
       {{ network_name }}:
@@ -17,9 +18,18 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/healthz', timeout=4)"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     logging:
       driver: json-file
       options:
         max-size: 10m
     volumes:
-      - {{ docker_dir }}/{{ container_prefix }}-smartfritz:/data:z
+      - smartfritz_data:/data
+
+volumes:
+  smartfritz_data:

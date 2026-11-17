@@ -3,7 +3,7 @@ schema_version: "1.0"
 module:
   name: smartfritz
   title: smartfritz
-  version: 0.1.0
+  version: 0.2.0
   description: "Light schedules and grow history for plugs on a FRITZ!Box, behind the reverse proxy"
   category: productivity
   node_types: [node]
@@ -28,13 +28,12 @@ derived:
   smartfritz_host: "{{ smartfritz_domain or 'grow.' ~ hostname }}"
 
 storage:
-  bind_mounts:
-    - { host: "${DOCKERDIR}/{{ container_prefix }}-smartfritz", type: dir, required: true }
+  volumes: [smartfritz_data]     # a volume, not a directory: it starts out owned by the image's user (uid 1000)
 
 backup:
   frozen:
     containers: ["{{ container_prefix }}-smartfritz"]
-    paths: ["${DOCKERDIR}/{{ container_prefix }}-smartfritz"]
+    volumes: [smartfritz_data]
 
 urls:
   - "smartfritz: https://{{ smartfritz_host }}"
@@ -68,11 +67,18 @@ settings:
     type: secret
     label: Web page password
     generate: true
+  - key: cert_auto
+    type: bool
+    label: Follow a new certificate
+    help: "The box makes itself a new certificate when it restarts after an update. On: smartfritz trusts it and notes it in its log, so the lights keep their schedule; someone on the network who answers as the box would get a Smart Home session. Off: it stops switching until the new fingerprint is confirmed by hand."
+    default: true
   - key: smartfritz_domain
     label: Name
     help: "Empty: grow.<hostname>."
     default: ""
     pattern: '[a-z0-9.-]*'
   - key: image
+    label: Image
+    help: "smartfritz's own image (github.com/derlocke-ng/smartfritz), pinned by version."
     group: Advanced
-    default: ghcr.io/derlocke-ng/smartfritz:latest
+    default: ghcr.io/derlocke-ng/smartfritz:0.2.0
