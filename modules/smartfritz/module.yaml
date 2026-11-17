@@ -3,7 +3,7 @@ schema_version: "1.0"
 module:
   name: smartfritz
   title: smartfritz
-  version: 0.2.0
+  version: 0.2.1
   description: "Light schedules and grow history for plugs on a FRITZ!Box, behind the reverse proxy"
   category: productivity
   node_types: [node]
@@ -37,6 +37,11 @@ backup:
 
 urls:
   - "smartfritz: https://{{ smartfritz_host }}"
+
+logins:
+  - label: smartfritz
+    password: app_password
+    note: "The page asks for this password only. It is made by the network (kiwi-server logins shows it)."
 
 nginx:
   upstream:
