@@ -1,20 +1,39 @@
 // Hearing and speaking, on this machine's processor (sherpa-onnx): Parakeet turns what was
-// said into text, Supertonic turns its answer into a voice. Nothing of this leaves the
-// machine, and it does not need the graphics card.
+// said into text; Kokoro, Pocket, Kitten, Piper or Supertonic turn its answer into a voice.
+// Nothing of this leaves the machine, and it does not need the graphics card. Kokoro, Kitten
+// and Piper get their sounds from piper-phonemize-node (espeak-ng, GPL-3.0-or-later).
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { voice as voiceOf, language } from './voices.js';
+import { voiceFor, language } from './voices.js';
 
-const sherpa = createRequire(import.meta.url)('sherpa-onnx-node');
+const require = createRequire(import.meta.url);
+const sherpa = require('sherpa-onnx-node');
 
+// the folder each part unpacks to, and how its voice engine is set up
 export const MODELS = {
   hear: 'sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8',
-  speak: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11',
+  kokoro: 'kokoro-multi-lang-v1_0',
+  pocket: 'sherpa-onnx-pocket-tts-int8-2026-01-26',
+  kitten: 'kitten-mini-en-v0_8',
+  'piper-en': 'vits-piper-en_US-ryan-medium',
+  'piper-de': 'vits-piper-de_DE-thorsten-high',
+  supertonic: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11',
 };
+const ENGINE = {
+  kokoro: (d) => ({ kokoro: { model: d('model.onnx'), voices: d('voices.bin'), tokens: d('tokens.txt') } }),
+  kitten: (d) => ({ kitten: { model: d('model.onnx'), voices: d('voices.bin'), tokens: d('tokens.txt') } }),
+  'piper-en': (d) => ({ vits: { model: d('en_US-ryan-medium.onnx'), tokens: d('tokens.txt') } }),
+  'piper-de': (d) => ({ vits: { model: d('de_DE-thorsten-high.onnx'), tokens: d('tokens.txt') } }),
+  pocket: (d) => ({ pocket: { lmFlow: d('lm_flow.int8.onnx'), lmMain: d('lm_main.int8.onnx'), encoder: d('encoder.onnx'), decoder: d('decoder.int8.onnx'),
+    textConditioner: d('text_conditioner.onnx'), vocabJson: d('vocab.json'), tokenScoresJson: d('token_scores.json'), voiceEmbeddingCacheCapacity: 50 } }),
+  supertonic: (d) => ({ supertonic: { durationPredictor: d('duration_predictor.int8.onnx'), textEncoder: d('text_encoder.int8.onnx'), vectorEstimator: d('vector_estimator.int8.onnx'),
+    vocoder: d('vocoder.int8.onnx'), ttsJson: d('tts.json'), unicodeIndexer: d('unicode_indexer.bin'), voiceStyle: d('voice.bin') } }),
+};
+const PHONEMES = new Set(['kokoro', 'kitten', 'piper-en', 'piper-de']);
 
 export class Speech {
-  constructor({ dir, threads = 4 }) { Object.assign(this, { dir, threads, tts: null, resamplers: {} }); }
+  constructor({ dir, threads = 4 }) { Object.assign(this, { dir, threads, tts: {}, refs: {}, resamplers: {} }); }
 
   has(model) { return fs.existsSync(path.join(this.dir, MODELS[model])); }
 
@@ -36,23 +55,29 @@ export class Speech {
     return String(this.rec.getResult(st).text || '').trim();
   }
 
-  async engine() {
-    const d = path.join(this.dir, MODELS.speak);
-    return (this.tts ||= await sherpa.OfflineTts.createAsync({
-      model: { supertonic: { durationPredictor: path.join(d, 'duration_predictor.int8.onnx'), textEncoder: path.join(d, 'text_encoder.int8.onnx'),
-        vectorEstimator: path.join(d, 'vector_estimator.int8.onnx'), vocoder: path.join(d, 'vocoder.int8.onnx'),
-        ttsJson: path.join(d, 'tts.json'), unicodeIndexer: path.join(d, 'unicode_indexer.bin'), voiceStyle: path.join(d, 'voice.bin') },
-        numThreads: this.threads, provider: 'cpu', debug: false },
-      maxNumSentences: 1 }));
+  async engine(name) {
+    const d = (f) => path.join(this.dir, MODELS[name], f);
+    return (this.tts[name] ||= await sherpa.OfflineTts.createAsync({ model: { ...ENGINE[name](d), numThreads: this.threads, provider: 'cpu', debug: false }, maxNumSentences: 1 }));
   }
 
   // one sentence as sound: {samples: Float32Array at 48 kHz, one channel, seconds}
-  async speak(text, voiceId, languages = ['en']) {
-    const v = voiceOf(voiceId);
+  async speak(text, voiceId, languages = ['en'], germanId = '') {
     const lang = language(text, languages[0] || 'en');
-    const tts = await this.engine();
-    const audio = await tts.generateAsync({ text: clean(text), enableExternalBuffer: false,
-      generationConfig: new sherpa.GenerationConfig({ sid: v.sid, speed: 1.05, numSteps: 8, extra: { lang } }) });
+    const v = voiceFor(voiceId, lang, germanId);
+    const tts = await this.engine(v.engine);
+    const say = clean(text);
+    let cfg;
+    if (v.engine === 'supertonic') cfg = { sid: v.sid, speed: 1.0, numSteps: 12, extra: { lang } };
+    else if (v.engine === 'pocket') {
+      const ref = (this.refs[v.ref] ||= sherpa.readWave(path.join(this.dir, MODELS.pocket, 'test_wavs', v.ref + '.wav')));
+      cfg = { speed: 1.0, referenceAudio: ref.samples, referenceSampleRate: ref.sampleRate, numSteps: 5, extra: { max_reference_audio_len: 12, seed: 42 } };
+    } else cfg = { sid: v.sid, speed: 1.0, silenceScale: 0.2 };
+    if (PHONEMES.has(v.engine)) {
+      this.phon ||= require('piper-phonemize-node');
+      cfg.phonemeCodepoints = this.phon.phonemize(say, tts.lang || v.lang).filter((s) => s.length > 0);
+      if (!cfg.phonemeCodepoints.length) return { samples: new Float32Array(0), seconds: 0, voice: v.id, lang };
+    }
+    const audio = await tts.generateAsync({ text: cfg.phonemeCodepoints ? '' : say, enableExternalBuffer: false, generationConfig: new sherpa.GenerationConfig(cfg) });
     const r = (this.resamplers[audio.sampleRate] ||= new sherpa.LinearResampler(audio.sampleRate, 48000));
     const samples = audio.sampleRate === 48000 ? audio.samples : r.resample(audio.samples, true);
     r.reset?.();

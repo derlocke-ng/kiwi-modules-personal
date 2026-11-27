@@ -9,7 +9,8 @@ import { system, history, jsonIn } from '../src/prompt.js';
 import { chunks, parseSetting } from '../src/bot.js';
 import { Brains } from '../src/brains/index.js';
 import { Companion } from '../src/companion.js';
-import { language, voice } from '../src/voices.js';
+import { language, voice, voiceFor } from '../src/voices.js';
+import { needed } from '../src/models.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'companion-test-'));
 const fake = (name, answer, { ok = true, local = true, fail = false } = {}) => ({
@@ -60,7 +61,7 @@ test('notes: kept as a readable file, numbered, no doubles, hand-written lines c
 test('the prompt holds persona, notes and interests; voice rules only in voice', () => {
   const base = { persona: { name: 'Juno', about: 'A friend.', style: 'Dry.' }, notes: [{ text: 'He likes Podman.' }], interests: '- WireGuard', summary: 'DHCP.', languages: ['en', 'de'] };
   const dm = system(base), v = system({ ...base, mode: 'voice' });
-  for (const part of ['You are Juno.', 'He likes Podman.', 'WireGuard', 'English or German', 'never claim to be human']) assert.ok(dm.includes(part), part);
+  for (const part of ['You are Juno.', 'He likes Podman.', 'WireGuard', 'English or German', 'language of his last message', 'never claim to be human']) assert.ok(dm.includes(part), part);
   assert.ok(!dm.includes('spoken by a voice') && v.includes('spoken by a voice'));
   assert.ok(v.startsWith(dm));                            // the same beginning: the model's cache holds for both
 });
@@ -94,7 +95,7 @@ test('brains: the first that can answer; the next one when it fails before a wor
 
 test('a reply is logged with its brain, and remembered in the next one', async () => {
   const store = new Store(tmp());
-  store.saveJson('persona.json', { name: 'Juno', gender: 'female', voice: 'f1', about: 'A friend.', style: 'Dry.' });
+  store.saveJson('persona.json', { name: 'Juno', gender: 'female', voice: 'heart', about: 'A friend.', style: 'Dry.' });
   const brain = fake('home', 'Papaya it was.');
   const c = new Companion({ cfg: { languages: ['en'], githubUser: '', name: '', voice: '' }, store, brains: new Brains([brain]) });
   let a = '';
@@ -109,10 +110,18 @@ test('a reply is logged with its brain, and remembered in the next one', async (
   assert.equal(c.quiet.on, false);
 });
 
-test('a sentence goes to the voice in its own language; an unknown voice falls back', () => {
+test('a sentence goes to a voice that speaks its language; an unknown voice falls back', () => {
   assert.equal(language('Na endlich, das ist gut.'), 'de');
   assert.equal(language('That sounds like a good plan.'), 'en');
   assert.equal(language('WireGuard.', 'de'), 'de');
-  assert.equal(voice('m2').sid, 6);
-  assert.equal(voice('nobody').id, 'f1');
+  assert.equal(voice('nobody').id, 'heart');
+  assert.equal(voiceFor('heart', 'en').id, 'heart');
+  assert.equal(voiceFor('heart', 'de').id, 'f1');                 // Kokoro speaks no German: a German voice of its gender
+  assert.equal(voiceFor('michael', 'de').id, 'thorsten');
+  assert.equal(voiceFor('michael', 'de', 'm2').id, 'm2');        // or the one that was set
+  assert.equal(voiceFor('m2', 'de').id, 'm2');
+  assert.deepEqual(needed('heart', ['en', 'de'], '').sort(), ['hear', 'kokoro', 'supertonic']);
+  assert.deepEqual(parseSetting('voice', 'george'), { voice: 'george' });
+  assert.equal(typeof parseSetting('voice', 'nobody'), 'string');
+  assert.equal(typeof parseSetting('german', 'heart'), 'string');
 });

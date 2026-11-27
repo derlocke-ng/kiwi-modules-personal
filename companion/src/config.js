@@ -20,6 +20,7 @@ export function load() {
     languages: list(env.LANGUAGES, 'en,de'),
     name: (env.NAME || '').trim(),                      // empty: it names itself
     voice: (env.VOICE || '').trim(),                    // empty: it picks one
+    voiceDe: (env.VOICE_DE || '').trim(),               // the voice for German sentences, when its own speaks English only
     githubUser: (env.GITHUB_USER || '').trim(),         // public repositories as a first list of interests
     brains: list(env.BRAINS, 'studio'),                 // who thinks, in this order: studio, claude-code, anthropic, openai
     studio: {
@@ -39,7 +40,7 @@ export function load() {
     speech: {
       dir: env.SPEECH_DIR || '/models',
       threads: int(env.SPEECH_THREADS, 4),
-      endSilenceMs: int(env.END_SILENCE_MS, 700),       // how long he must be silent before his sentence counts as over
+      endSilenceMs: int(env.END_SILENCE_MS, 1200),       // how long he must be silent before his sentence counts as over
     },
   };
 }

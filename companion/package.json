@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A Discord companion for one person: DM chat and voice, with a model at home",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "engines": { "node": ">=22.12" },
   "scripts": {
@@ -15,6 +16,7 @@
     "@discordjs/voice": "0.19.2",
     "discord.js": "14.28.1",
     "opusscript": "0.0.8",
+    "piper-phonemize-node": "1.6.1",
     "sherpa-onnx-node": "2.0.3"
   }
 }

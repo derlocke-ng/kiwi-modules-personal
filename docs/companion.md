@@ -75,9 +75,10 @@ On a machine without the `ai` module, set `ai_url` to the machine that has it
 | `languages` | `[en, de]` | The languages you use with it. The first is assumed when a sentence could be either. |
 | `listen` | `conversation` | When it answers in a voice channel. See [Talk to it aloud](#talk-to-it-aloud). |
 | `checkin` | `off` | A time window such as `18:00-22:00`: it writes first, once a day in that window, if you have not written that day. |
-| `name`, `voice` | empty | Empty: it names itself and picks a voice at its first start. Voices are `f1` to `f5` and `m1` to `m5`. |
+| `name`, `voice` | empty | Empty: it names itself and picks a voice at its first start. The voices are listed under [Talk to it aloud](#talk-to-it-aloud). |
+| `voice_de` | empty | The voice for German sentences when its own voice speaks English only. |
 | `ai_load` | `true` | It may load the model when Studio has none loaded. It never replaces a loaded model. |
-| `pause` | `700` | Milliseconds of silence after which your sentence counts as finished. |
+| `pause` | `1200` | Milliseconds of silence after which what you said counts as finished. |
 
 ## Write with it
 
@@ -95,7 +96,7 @@ commands work in the direct message and in the server:
 | `/forget N`, `/forget all` | Removes one note, or everything: the notes, the summary and the talk so far. |
 | `/interest text` | Something you are into, to talk about. |
 | `/join`, `/leave` | It comes into the voice channel you are in, or leaves it. |
-| `/set setting value` | Changes `listen`, `checkin`, `load`, `pause`, `name` or `voice` while it runs. |
+| `/set setting value` | Changes `listen`, `checkin`, `load`, `pause`, `name`, `voice` or `german` (its German voice) while it runs. |
 
 Writing "be quiet", "shut up", "Ruhe" or "sei still" as a whole message does the same as
 `/quiet`.
@@ -103,7 +104,7 @@ Writing "be quiet", "shut up", "Ruhe" or "sei still" as a whole message does the
 ## Talk to it aloud
 
 Join the voice channel of your server and type `/join`. The first time, it fetches what it
-needs to hear and to speak (590 MB, checked against known checksums) into its own volume.
+needs to hear and to speak (about 900 MB, checked against known checksums) into its own volume.
 
 - **It stops when you speak.** Its voice pauses the moment your microphone sends sound. If
   that was only a noise, it goes on. If you said something to it, what it was saying is
@@ -118,9 +119,27 @@ needs to hear and to speak (590 MB, checked against known checksums) into its ow
 To find its name, it turns everything you say in the channel into text, on the machine.
 What is not meant for it is dropped and not kept.
 
+- **It lets you finish.** When you stop, it waits for `pause` milliseconds of silence. If your
+  sentence sounds unfinished ("so I was thinking that"), it waits that long once more. If you
+  go on in that time, both parts count as one turn.
+
 Hearing and speaking run on the machine's processor, not on the graphics card, so they fit
-beside a model that fills the card. Hearing uses Parakeet TDT 0.6B v3, speaking uses
-Supertonic 3; both know English and German.
+beside a model that fills the card. Hearing uses Parakeet TDT 0.6B v3, which knows English
+and German.
+
+| Voices | Speak | What they are |
+|---|---|---|
+| `heart`, `bella`, `nicole`, `sky`, `emma`, `michael`, `fenrir`, `puck`, `george`, `fable` | English | Kokoro. The most natural ones; it picks one of these by itself. |
+| `bria`, `loona` | English | Pocket TTS. |
+| `kitten1` to `kitten8` | English | Kitten. |
+| `ryan` | English | Piper. Plain, and the quickest. |
+| `thorsten` | German | Piper. |
+| `f1` to `f5`, `m1` to `m5` | English and German | Supertonic. |
+
+A voice that speaks English only hands German sentences to `voice_de`, or to a German voice
+that fits it. `/set voice george` changes the voice while it runs, and it says a line so you
+hear it. Kokoro, Kitten and Piper take their pronunciation from espeak-ng through
+`piper-phonemize-node`, which is under the GPL, version 3 or later.
 
 **Known gaps.** Technical words are often misheard ("Btrfs" became "BTAPs" in the tests).
 The model is told to guess from what it knows, which does not always work. If your

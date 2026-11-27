@@ -10,7 +10,7 @@ export async function ensure(store, brains, cfg, opts = {}) {
   let p = store.json('persona.json', null);
   if (!p || !p.name) {
     p = { ...FALLBACK };
-    const voices = VOICES.map((v) => `${v.id} (${v.note})`).join(', ');
+    const voices = VOICES.filter((v) => v.engine === 'kokoro').map((v) => `${v.id} (${v.gender}, ${v.note})`).join(', ');
     const ask = 'You are about to become the companion and friend of one person who likes IT: Linux, networks, self-hosting, programming. ' +
       'Choose who you are. Pick a first name that is short, easy to say and easy for speech recognition to hear (two syllables, no rare sounds), ' +
       'your gender (female, male or neutral), and one voice from this list: ' + voices + '. ' +

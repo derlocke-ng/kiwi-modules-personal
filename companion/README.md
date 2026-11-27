@@ -11,3 +11,5 @@ podman build -t kiwi-companion -f Containerfile .
 
 `bench/` holds the measurements behind the choices (chat model, hearing, speaking, the whole
 voice chain).
+
+Licence: GPL-3.0-or-later, like the other Kiwi tools. It links `piper-phonemize-node` (espeak-ng), which is under that licence.

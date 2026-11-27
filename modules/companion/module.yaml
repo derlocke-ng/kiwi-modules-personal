@@ -87,9 +87,14 @@ settings:
     default: ""
   - key: voice
     label: Its voice
-    help: "f1 to f5 (female), m1 to m5 (male). Empty: it picks one."
+    help: "heart, bella, nicole, sky, emma, michael, fenrir, puck, george, fable (Kokoro, English), bria, loona (Pocket, English), kitten1 to kitten8, ryan, or f1 to f5 and m1 to m5 (Supertonic, English and German). Empty: it picks one of Kokoro's."
     default: ""
-    pattern: '([fm][1-5])?'
+    pattern: '[a-z0-9]*'
+  - key: voice_de
+    label: Its German voice
+    help: "For German sentences when its voice speaks English only: thorsten, or f1 to f5 and m1 to m5. Empty: one that fits its voice."
+    default: ""
+    pattern: '[a-z0-9]*'
   - key: ai_url
     group: Local AI
     label: Address of the local AI
@@ -159,8 +164,8 @@ settings:
     type: int
     group: Advanced
     label: Silence that ends a sentence (ms)
-    help: "How long its person must be silent before what they said counts as finished. Shorter answers sooner and cuts in more often."
-    default: 700
+    help: "How long its person must be silent before what they said counts as finished. A sentence that sounds unfinished gets this long once more. Shorter answers sooner and cuts in more often."
+    default: 1200
   - key: image
     group: Advanced
     label: Image
