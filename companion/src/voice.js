@@ -7,7 +7,6 @@
 // when he said something, what it was saying is dropped. "Be quiet" keeps it silent.
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, entersState, EndBehaviorType, StreamType, VoiceConnectionStatus, AudioPlayerStatus, NoSubscriberBehavior } from '@discordjs/voice';
 import { createRequire } from 'node:module';
-import path from 'node:path';
 import { Readable } from 'node:stream';
 import { Speech, Sentences, toPcm, fromPcm } from './speech.js';
 import { ensure } from './models.js';
@@ -18,8 +17,7 @@ const ATTENTIVE_MS = 45 * 1000;          // "conversation": after it spoke, he c
 const MAX_UTTERANCE_S = 60;
 
 export async function makeVoice({ cfg, store, companion, say, presence }) {
-  const dir = path.join(cfg.dataDir, 'models');
-  const speech = new Speech({ dir: cfg.speech.dir && cfg.speech.dir !== '/models' ? cfg.speech.dir : dir, threads: cfg.speech.threads });
+  const speech = new Speech({ dir: cfg.speech.dir, threads: cfg.speech.threads });
   let connection = null, player = null, channelId = null, ownerId = null;
   let queue = [], playing = false, pausedByHim = false, answer = null, attentiveUntil = 0, capturing = false;
 

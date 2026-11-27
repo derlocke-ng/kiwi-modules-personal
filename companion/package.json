@@ -8,13 +8,13 @@
   "scripts": {
     "start": "node src/main.js",
     "console": "node src/main.js --console",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.14.0",
     "@discordjs/voice": "0.19.2",
     "discord.js": "14.28.1",
-    "opusscript": "0.1.1",
+    "opusscript": "0.0.8",
     "sherpa-onnx-node": "2.0.3"
   }
 }

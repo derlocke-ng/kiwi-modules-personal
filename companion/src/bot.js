@@ -92,6 +92,12 @@ export async function startBot({ cfg, store, companion, say }) {
     await companion.start({ onNotice: say }).catch((e) => say('start:', e.message));
     applySettings();
     presence();
+    // it carries the name it chose (Discord allows two renames an hour: once per name is enough)
+    const name = companion.persona?.name;
+    if (name && client.user.username !== name && store.state.renamedTo !== name) {
+      store.setState({ renamedTo: name });
+      await client.user.setUsername(name).then(() => say('my Discord name is now', name), (e) => say('could not take the name', name + ':', e.message));
+    }
     setInterval(() => checkin().catch(() => {}), 60 * 1000);
     // a sign of life for the container's health check: touched while the connection to Discord stands
     const alive = () => { if (client.ws.status === 0) fs.writeFileSync(path.join(os.tmpdir(), 'alive'), String(Date.now())); };

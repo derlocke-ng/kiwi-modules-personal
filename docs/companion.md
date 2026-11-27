@@ -115,6 +115,9 @@ needs to hear and to speak (590 MB, checked against known checksums) into its ow
   talk; it stays in the talk until 45 seconds pass in silence. `name`: it answers only when
   you say its name. `always`: it answers everything it hears, which suits a quiet room.
 
+To find its name, it turns everything you say in the channel into text, on the machine.
+What is not meant for it is dropped and not kept.
+
 Hearing and speaking run on the machine's processor, not on the graphics card, so they fit
 beside a model that fills the card. Hearing uses Parakeet TDT 0.6B v3, speaking uses
 Supertonic 3; both know English and German.
