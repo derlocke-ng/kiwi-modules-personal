@@ -1,6 +1,6 @@
 # Kiwi modules: personal
 
-derlocke's own modules (smartfritz, for now), for [kiwi-server](https://github.com/derlocke-ng/kiwi-server) beyond the built-in ones:
+derlocke's own modules (smartfritz and companion), for [kiwi-server](https://github.com/derlocke-ng/kiwi-server) beyond the built-in ones:
 a folder per module in `modules/`, each with its `module.yaml` and templates, in the format of
 [kiwi-modules](https://github.com/derlocke-ng/kiwi-modules).
 
@@ -35,6 +35,12 @@ settings:
 ```
 
 The same check runs on every push and pull request (`.github/workflows/check.yml`).
+
+## Documentation
+
+| Page | What it covers |
+|---|---|
+| [Companion](docs/companion.md) | The `companion` module, a Discord companion for one person: what leaves the house, the setup at Discord, its commands, voice, memory. Its program is in [companion/](companion/README.md). |
 
 ## Versions
 
