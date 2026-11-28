@@ -18,6 +18,7 @@ const COMMANDS = [
   { name: 'remember', description: 'Tell me something to keep', options: [opt('what', 'What to remember', Opt.String, true)] },
   { name: 'forget', description: 'Forget one thing (its number in /memory), or all', options: [opt('what', 'A number, or: all', Opt.String, true)] },
   { name: 'interest', description: 'Something you are into, to talk about', options: [opt('what', 'The interest', Opt.String, true)] },
+  { name: 'voices', description: 'Hear the voices I can speak with, a sound file each; /set voice NAME takes one' },
   { name: 'join', description: 'Come into the voice channel you are in' },
   { name: 'leave', description: 'Leave the voice channel' },
   { name: 'set', description: 'Change a setting', options: [
@@ -58,6 +59,7 @@ export async function startBot({ cfg, store, companion, say }) {
     partials: [Partials.Channel, Partials.Message],
   });
   let voice = null;                                     // the voice part, loaded when first asked for
+  let samples = null;                                   // the speech engine for /voices, outside a voice channel
 
   const isOwner = (user) => {
     const pinned = store.state.ownerId;
@@ -196,6 +198,25 @@ export async function startBot({ cfg, store, companion, say }) {
           break;
         }
         case 'leave': voice?.leave(); await i.reply({ content: 'Left.', ...hidden }); break;
+        case 'voices': {
+          await i.deferReply(hidden);
+          const { Speech, wav } = await import('./speech.js');
+          const { ensure, needed } = await import('./models.js');
+          const sp = (samples ||= new Speech({ dir: cfg.speech.dir, threads: cfg.speech.threads }));
+          const pick = ['robert', 'jeff', 'wah', 'sirajo', 'd617b', 'd468c', 'd9a2e', 'kditz', 'wizard', 'andrea', 'heart', 'bella'];
+          const mine = companion.persona?.voice;
+          const list = [...new Set([mine, ...pick].filter(Boolean))];
+          await ensure(cfg.speech.dir, [...new Set(list.flatMap((v) => needed(v, ['en'], '')))].filter((n) => n !== 'hear'), say);
+          const line = "Oh nice, you got the backup running? That's a relief. So what was it in the end, the permissions thing again?";
+          const files = [];
+          for (const v of list) {
+            const a = await sp.speak(line, v, ['en']);
+            files.push({ attachment: wav(a.samples), name: `${v}${v === mine ? '-now' : ''}.wav` });
+          }
+          await i.editReply({ content: `My voices, the same line each (now: ${mine}). /set voice NAME takes one.`, files: files.slice(0, 10) });
+          if (files.length > 10) await i.followUp({ files: files.slice(10), ...hidden });
+          break;
+        }
         case 'set': {
           const r = parseSetting(i.options.getString('setting'), i.options.getString('value'));
           if (typeof r === 'string') { await i.reply({ content: r, ...hidden }); break; }

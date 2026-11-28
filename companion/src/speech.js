@@ -97,6 +97,17 @@ export function clean(text) {
     .replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim();
 }
 
+// Float32 mono -> a WAV file in memory (16-bit), to send as a sound file
+export function wav(samples, rate = 48000) {
+  const data = Buffer.allocUnsafe(samples.length * 2);
+  for (let i = 0; i < samples.length; i++) data.writeInt16LE(Math.max(-1, Math.min(1, samples[i])) * 32767 | 0, i * 2);
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8); h.write('fmt ', 12); h.writeUInt32LE(16, 16);
+  h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
+  h.write('data', 36); h.writeUInt32LE(data.length, 40);
+  return Buffer.concat([h, data]);
+}
+
 // Float32 mono at 48 kHz -> what Discord plays: 16-bit, two channels
 export function toPcm(samples) {
   const out = Buffer.allocUnsafe(samples.length * 4);
