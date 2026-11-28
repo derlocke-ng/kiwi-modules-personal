@@ -57,12 +57,12 @@ export class OpenAIBrain {
   // The answer in pieces. messages: [{role: 'user'|'assistant', content}]. With `web` (the
   // companion's own search, web.js) it offers the model two tools and runs them itself, a few
   // rounds at most; without it, Studio's own web search when that is switched on.
-  async *stream({ system, messages, maxTokens = 500, signal, web, onTool }) {
+  async *stream({ system, messages, maxTokens = 500, signal, web, onTool, think = false }) {
     const msgs = [{ role: 'system', content: system }, ...messages];
     const own = web?.on && this.webOn !== false;
     for (let round = 0; round < 5; round++) {
       const body = { model: this.model || 'default', stream: true, max_tokens: maxTokens, temperature: 0.7, messages: msgs };
-      if (this.studio) Object.assign(body, { top_k: this.studio.topK, enable_thinking: false });
+      if (this.studio) Object.assign(body, { top_k: this.studio.topK, enable_thinking: !!(think || this.think) });
       if (own) Object.assign(body, { tools: TOOLS, tool_choice: round < 4 ? 'auto' : 'none' });
       const builtin = !own && this.studio && this.studio.web && !this.noWeb;
       if (builtin) Object.assign(body, { enable_tools: true, enabled_tools: ['web_search'], permission_mode: 'off', confirm_tool_calls: false,

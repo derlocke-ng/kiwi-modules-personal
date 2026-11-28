@@ -48,7 +48,7 @@ export class Companion {
     let out = '';
     try {
       const web = this.setting('web') !== false ? this.web : null;
-      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 900, signal, web, onTool }, { onNotice })) {
+      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 1500, signal, web, onTool, think: via !== 'voice' }, { onNotice })) {
         out += piece;
         yield piece;
       }
