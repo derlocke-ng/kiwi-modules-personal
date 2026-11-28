@@ -22,7 +22,7 @@ const COMMANDS = [
   { name: 'leave', description: 'Leave the voice channel' },
   { name: 'set', description: 'Change a setting', options: [
     opt('setting', 'Which one', Opt.String, true, { choices: ['web', 'listen', 'checkin', 'load', 'pause', 'name', 'voice', 'german'].map((v) => ({ name: v, value: v })) }),
-    opt('value', 'web: on|off; listen: conversation|name|always; checkin: off or 18:00-22:00; load: on|off; pause: ms; name; voice; german', Opt.String, true)] },
+    opt('value', 'on/off, a mode, a time window, a name, a voice: a wrong value says what fits', Opt.String, true)] },
 ].map((c) => ({ ...c, contexts: [0, 1], integration_types: [0] }));          // in servers and in its own DMs
 
 export function chunks(text, max = 1900) {              // Discord takes 2000 characters a message
@@ -101,7 +101,11 @@ export async function startBot({ cfg, store, companion, say }) {
     const name = companion.persona?.name;
     if (name && client.user.username !== name && store.state.renamedTo !== name) {
       store.setState({ renamedTo: name });
-      await client.user.setUsername(name).then(() => say('my Discord name is now', name), (e) => say('could not take the name', name + ':', e.message));
+      await client.user.setUsername(name).then(() => say('my Discord name is now', name), (e) => say('could not take the name', name, 'for the account:', e.message.split('\n').pop()));
+    }
+    // in its person's server it goes by its own name even when the account kept another one
+    for (const g of client.guilds.cache.values()) {
+      if (name && g.members.me && g.members.me.displayName !== name) await g.members.me.setNickname(name).then(() => say('my name in the server is', name), (e) => say('could not set my name in the server:', e.message));
     }
     setInterval(() => checkin().catch(() => {}), 60 * 1000);
     // a sign of life for the container's health check: touched while the connection to Discord stands
