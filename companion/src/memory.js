@@ -2,13 +2,22 @@
 // is worth keeping about its person (notes.md) and what the two talked about (summary.md).
 import { jsonIn, history } from './prompt.js';
 
-const TURNS = 40;           // log entries handed to the model with every answer
+const TURNS = 40;           // log entries handed to the model with every answer, at least
+const STEP = 20;            // ... and at most this many more
 const EVERY = 8;            // his messages between two looks at what is worth keeping
 
 export class Memory {
   constructor(store, brains) { this.store = store; this.brains = brains; this.busy = false; }
 
-  context() { return history(this.store.recent(TURNS)); }
+  // The last turns, in a window that moves in steps of STEP entries, not by one each turn: the
+  // model at home keeps what it has read and reads only the new turns, as long as the beginning
+  // of what it is given stays the same.
+  context() {
+    const all = this.store.recent(Infinity);
+    if (all.length <= TURNS) return history(all);
+    const start = all.length - TURNS - ((all.length - TURNS) % STEP);
+    return history(all.slice(start));
+  }
   summary() { return this.store.read('summary.md').trim(); }
 
   // after each of his messages: every few, take notes (in the background, never in his way)
@@ -41,6 +50,7 @@ export class Memory {
         if (typeof got.summary === 'string' && got.summary.trim()) this.store.write('summary.md', got.summary.trim() + '\n');
         this.store.setState({ sinceNotes: 0 });
       }
+      this.onNotes?.();
       return added;
     } catch { return []; } finally { this.busy = false; }
   }

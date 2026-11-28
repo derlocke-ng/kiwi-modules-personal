@@ -22,7 +22,7 @@ const COMMANDS = [
   { name: 'join', description: 'Come into the voice channel you are in' },
   { name: 'leave', description: 'Leave the voice channel' },
   { name: 'set', description: 'Change a setting', options: [
-    opt('setting', 'Which one', Opt.String, true, { choices: ['web', 'listen', 'checkin', 'load', 'pause', 'name', 'voice', 'german'].map((v) => ({ name: v, value: v })) }),
+    opt('setting', 'Which one', Opt.String, true, { choices: ['web', 'think', 'listen', 'checkin', 'load', 'pause', 'name', 'voice', 'german'].map((v) => ({ name: v, value: v })) }),
     opt('value', 'on/off, a mode, a time window, a name, a voice: a wrong value says what fits', Opt.String, true)] },
 ].map((c) => ({ ...c, contexts: [0, 1], integration_types: [0] }));          // in servers and in its own DMs
 
@@ -45,6 +45,7 @@ export function parseSetting(setting, value) {          // -> {key: value} for t
   if (setting === 'checkin') return v === 'off' || /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(v) ? { checkin: v } : 'checkin: off, or a time window like 18:00-22:00';
   if (setting === 'load') return ['on', 'off'].includes(v) ? { load: v === 'on' } : 'load: on or off (may I load the model at home when none is loaded)';
   if (setting === 'web') return ['on', 'off'].includes(v) ? { web: v === 'on' } : 'web: on or off (may I look things up on the web)';
+  if (setting === 'think') return ['on', 'off'].includes(v) ? { think: v === 'on' } : 'think: on or off (think before answering in writing: a little better, seconds slower)';
   if (setting === 'pause') return /^\d{3,4}$/.test(v) && +v >= 300 && +v <= 3000 ? { pause: +v } : 'pause: 300 to 3000 (milliseconds of silence that end your sentence)';
   if (setting === 'name') return /^[\p{L}][\p{L}' -]{1,19}$/u.test(v) ? { name: v } : 'name: letters only, up to 20';
   if (setting === 'voice') return VOICES.some((x) => x.id === v) ? { voice: v } : 'voice: ' + VOICES.map((x) => x.id).join(', ');
@@ -99,6 +100,8 @@ export async function startBot({ cfg, store, companion, say }) {
     await companion.start({ onNotice: say }).catch((e) => say('start:', e.message));
     applySettings();
     presence();
+    companion.memory.onNotes = () => companion.warm(voice?.channelId ? 'voice' : 'dm');
+    companion.warm('dm');
     // it carries the name it chose (Discord allows two renames an hour: once per name is enough)
     const name = companion.persona?.name;
     if (name && client.user.username !== name && store.state.renamedTo !== name) {

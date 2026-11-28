@@ -186,6 +186,7 @@ export async function makeVoice({ cfg, store, companion, say, presence }) {
         try { await Promise.race([entersState(connection, VoiceConnectionStatus.Signalling, 5000), entersState(connection, VoiceConnectionStatus.Connecting, 5000)]); } catch { this.leave(); }
       });
       listen();
+      companion.warm('voice');                          // the model reads the talk now, not at his first sentence
       attentiveUntil = Date.now() + ATTENTIVE_MS;       // he asked it in: he can just start talking
       if (!companion.quiet.on) speakText(cfg.languages[0] === 'de' ? 'Bin da.' : "I'm here.").catch(() => {});
       const how = { conversation: `say my name (${companion.persona.name}) to start; then just talk`, name: `I answer when you say my name (${companion.persona.name})`, always: 'I answer whatever you say' }[mode()];

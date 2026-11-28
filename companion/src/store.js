@@ -77,7 +77,8 @@ export class Store {
   }
 
   recent(n) {
-    const lines = this.read('chat.jsonl').trimEnd().split('\n').filter(Boolean).slice(-n);
+    const lines = this.read('chat.jsonl').trimEnd().split('\n').filter(Boolean);
+    if (Number.isFinite(n)) lines.splice(0, Math.max(0, lines.length - n));
     return lines.map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
   }
 }

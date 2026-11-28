@@ -59,7 +59,7 @@ export class Companion {
     let out = '';
     try {
       const web = this.setting('web') !== false ? this.web : null;
-      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 1500, signal, web, onTool, think: via !== 'voice' }, { onNotice })) {
+      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 1500, signal, web, onTool, think: this.setting('think') === true && via !== 'voice' }, { onNotice })) {
         out += piece;
         yield piece;
       }
@@ -68,6 +68,17 @@ export class Companion {
       if (out.trim()) this.store.log({ role: 'me', text: out.trim(), via, brain: this.brains.last?.name, cut: signal?.aborted || undefined });
     }
     this.memory.afterTurn().catch(() => {});
+  }
+
+  // Has the model read the talk so far ahead of time (one token, thrown away), so the first real
+  // answer comes at once: when it joins a voice channel, and after it took notes.
+  async warm(via = 'dm') {
+    try {
+      const sys = system({ persona: this.persona, notes: this.store.notes(), interests: this.interests.text(), summary: this.memory.summary(),
+        languages: this.cfg.languages, mode: via === 'voice' ? 'voice' : 'dm', web: this.setting('web') !== false, words: via === 'voice' ? this.hotwords() : null });
+      const msgs = [...this.memory.context(), { role: 'user', content: '(warming up, say nothing)' }];
+      for await (const _ of this.brains.stream({ system: sys, messages: msgs, maxTokens: 1, web: this.setting('web') !== false ? this.web : null }, { only: ['studio', 'backup'] })) break;
+    } catch { /* nothing to warm: fine */ }
   }
 
   // A message it writes first (a check-in): one or two sentences from what it knows and what he did lately.

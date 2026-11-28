@@ -36,6 +36,7 @@ export class Brains {
   async *stream(req, opts = {}) {
     const tried = [];
     for (const b of this.list) {
+      if (opts.only && !opts.only.includes(b.name)) continue;
       const r = await b.ready(opts);
       if (!r.ok) { tried.push(`${b.label}: ${r.why}`); continue; }
       let any = false;

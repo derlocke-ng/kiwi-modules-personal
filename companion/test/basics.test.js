@@ -169,3 +169,15 @@ test('the companion runs the tools a model asks for, then streams its answer', a
   assert.deepEqual(seen[1].messages.slice(-2).map((m) => m.role), ['assistant', 'tool']);
   assert.equal(seen[1].messages.at(-1).content, '1. IGN guide');
 });
+
+test('the talk handed to the model moves in steps, so its beginning stays the same for a while', async () => {
+  const { Memory } = await import('../src/memory.js');
+  const store = new Store(tmp());
+  const m = new Memory(store, null);
+  const firsts = [];
+  for (let i = 0; i < 70; i++) { store.log({ role: i % 2 ? 'me' : 'him', text: 't' + i }); firsts.push(m.context()[0]?.content); }
+  assert.equal(firsts[30], 't0');                         // fewer than 40: all of it
+  assert.equal(new Set(firsts.slice(40, 59)).size, 1);    // 40 to 59 entries: the same beginning
+  assert.equal(firsts[69], 't20');                        // 60 to 79: from the 20th on
+  assert.ok(m.context().length >= 40 && m.context().length <= 59);
+});
