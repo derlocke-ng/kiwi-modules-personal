@@ -1,0 +1,210 @@
+schema_version: "1.0"
+
+module:
+  name: companion
+  title: Companion
+  version: 0.1.0
+  description: "A Discord companion for one person: it chats by direct message and talks in a voice channel, thinks with the local AI (the ai module) or with Claude, and remembers what it learns. It answers nobody else and only connects out"
+  category: productivity
+  node_types: [node]
+
+dependencies:
+  required: []
+  optional: [ai]
+
+network:
+  open_ports: []
+
+firewall:
+  scope: vpn-client
+  rules: []
+
+templates:
+  compose: docker-compose.yml.j2
+  searxng: searxng.yml.j2
+
+outputs:
+  searxng: { path: "{{ container_prefix }}-companion-search/settings.yml", mode: 0644, when: web }
+
+derived:
+  # on the machine that runs the local AI: Studio itself, on the stack network (no proxy, no certificate)
+  ai_url_effective: "{{ ai_url or ('http://' ~ container_prefix ~ '-ai:8000' if has_ai else '') }}"
+
+validate:
+  - when: "not owner"
+    error: "companion.owner: the Discord user name or user id of the one person it answers"
+  - when: "brains | reject('in', ['studio', 'backup', 'claude-code', 'anthropic', 'openai']) | list"
+    error: "companion.brains: studio, backup, claude-code, anthropic, openai"
+  - when: "'backup' in brains and not backup_url"
+    error: "companion.backup_url: the address of the second model, for brains: backup"
+  - when: "'studio' in brains and not ai_url_effective"
+    error: "companion.ai_url: this machine does not run the ai module; name the one that does (https://ai.<machine>.home), or take studio out of companion.brains"
+  - when: "listen not in ['conversation', 'name', 'always']"
+    error: "companion.listen: conversation, name or always"
+
+storage:
+  volumes: [companion_data, companion_models]     # volumes, not directories: they start out owned by the image's user
+
+backup:
+  frozen:
+    containers: ["{{ container_prefix }}-companion"]
+    volumes: [companion_data]                     # what it knows and the talk so far; the speech models download again
+
+settings:
+  - key: owner
+    label: Its person
+    help: "The Discord user name or user id of the one person it answers. With a name, it keeps the account's id at the first message and goes by the id from then on."
+    required: true
+    pattern: '[A-Za-z0-9_.]{2,32}'
+  - key: bot_token
+    type: secret
+    label: Bot token
+    help: "From the Discord developer portal (Bot, Reset Token). Never written into the fleet file: kiwi-server secrets set FLEET MACHINE companion.bot_token"
+    required: true
+  - key: brains
+    type: list
+    label: What it thinks with
+    help: "In this order, the first that can answer: studio (the local AI), backup (a second model at home, below), claude-code (Claude through the Claude Code program and your own login), anthropic or openai (an API key). claude-code, anthropic and openai send the talk to that company."
+    default: [studio]
+  - key: web
+    type: bool
+    label: Web search
+    help: "It looks things up on the web when it needs to (a game, a tool, news), through its own SearXNG next to it, with every brain. Off: no search container, and it answers from what it knows."
+    default: true
+  - key: languages
+    type: list
+    label: Languages
+    help: "The first one is assumed when a sentence could be either. en and de are tried."
+    default: [en, de]
+  - key: github_user
+    label: GitHub user
+    help: "Its person's public repositories and latest commits, as things to talk about. Asked once a day, without a login. Empty: not asked."
+    default: ""
+    pattern: '[A-Za-z0-9-]*'
+  - key: listen
+    type: enum
+    label: In a voice channel it answers
+    help: "conversation: once called by its name it stays in the talk until 45 seconds pass in silence. name: only when called. always: everything it hears."
+    options: [conversation, name, always]
+    default: conversation
+  - key: checkin
+    label: Writing first
+    help: "off, or a time window such as 18:00-22:00: one message a day in it, when its person has not written that day and it is not quiet."
+    default: "off"
+    pattern: 'off|([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]'
+  - key: name
+    label: Its name
+    help: "Empty: it names itself at its first start."
+    default: ""
+  - key: voice
+    label: Its voice
+    help: "heart, bella, nicole, sky, emma, michael, fenrir, puck, george, fable (Kokoro, English), bria, loona (Pocket, English), kitten1 to kitten8, ryan, or f1 to f5 and m1 to m5 (Supertonic, English and German). Empty: it picks one of Kokoro's."
+    default: ""
+    pattern: '[a-z0-9]*'
+  - key: voice_de
+    label: Its German voice
+    help: "For German sentences when its voice speaks English only: thorsten, or f1 to f5 and m1 to m5. Empty: one that fits its voice."
+    default: ""
+    pattern: '[a-z0-9]*'
+  - key: ai_url
+    group: Local AI
+    label: Address of the local AI
+    help: "Empty on the machine that runs the ai module. Elsewhere: https://ai.<machine>.home of the machine that does."
+    default: ""
+    pattern: '(https?://[0-9A-Za-z.:\[\]-]+)?'
+  - key: ai_key
+    type: secret
+    group: Local AI
+    label: API key of the local AI
+    help: "The key made on Studio's page. kiwi-server secrets set FLEET MACHINE companion.ai_key < secrets/ai/<machine>.key"
+  - key: ai_load
+    type: bool
+    group: Local AI
+    label: Load the model when none is loaded
+    help: "After a start Studio has no model loaded. On: it loads the one below (about a minute). It never replaces a loaded model."
+    default: true
+  - key: ai_model
+    group: Local AI
+    label: Model to load
+    default: ""
+  - key: ai_quant
+    group: Local AI
+    label: Its quant
+    default: ""
+  - key: ai_context
+    type: int
+    group: Local AI
+    label: Its context
+    default: 262144
+  - key: claude_token
+    type: secret
+    group: Claude
+    label: Claude Code login token
+    help: "For the claude-code brain: the token `claude setup-token` prints, with your own subscription. Handed to the Claude Code program only."
+  - key: claude_model
+    group: Claude
+    label: Claude Code's model
+    default: sonnet
+  - key: anthropic_key
+    type: secret
+    group: Claude
+    label: Anthropic API key
+    help: "For the anthropic brain. Paid per use."
+  - key: anthropic_model
+    group: Claude
+    label: Anthropic model
+    default: claude-opus-5-5
+  - key: openai_url
+    group: Other service
+    label: Address of an OpenAI-compatible service
+    default: "https://api.openai.com"
+  - key: openai_key
+    type: secret
+    group: Other service
+    label: Its API key
+  - key: openai_model
+    group: Other service
+    label: Its model
+    default: ""
+  - key: speech_threads
+    type: int
+    group: Advanced
+    label: Processor threads for hearing and speaking
+    default: 4
+  - key: pause
+    type: int
+    group: Advanced
+    label: Silence that ends a sentence (ms)
+    help: "How long its person must be silent before what they said counts as finished. A sentence that sounds unfinished gets this long once more. Shorter answers sooner and cuts in more often."
+    default: 1200
+  - key: backup_url
+    group: Backup model
+    label: Address of a second model at home
+    help: "For when the local AI is off: an OpenAI-compatible server on a machine that stays on (a llama.cpp server, https://ai.<machine>.home). Add backup to brains, after studio."
+    default: ""
+    pattern: '(https?://[0-9A-Za-z.:\[\]-]+)?'
+  - key: backup_key
+    type: secret
+    group: Backup model
+    label: Its API key
+  - key: backup_model
+    group: Backup model
+    label: Its model
+    help: "Empty: the one it has loaded."
+    default: ""
+  - key: search_secret
+    type: secret
+    group: Generated
+    label: Key of its search
+    help: "SearXNG's own key, for nothing but its sessions. Made from the seed."
+    generate: true
+  - key: search_image
+    group: Advanced
+    label: Search image
+    help: "SearXNG, pinned by its date tag."
+    default: docker.io/searxng/searxng:2026.11.26-b5605b8f2
+  - key: image
+    group: Advanced
+    label: Image
+    help: "Built from this repository's companion/ folder, pinned by version."
+    default: ghcr.io/derlocke-ng/kiwi-companion:0.1.0

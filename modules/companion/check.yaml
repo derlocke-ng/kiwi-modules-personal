@@ -1,0 +1,6 @@
+# made-up values, for tools/check-modules.py only
+settings:
+  owner: some_user
+  bot_token: check-only-not-a-token
+  ai_url: https://ai.papaya.home
+  ai_key: check-only-not-a-key
