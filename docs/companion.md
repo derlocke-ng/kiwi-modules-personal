@@ -23,8 +23,9 @@ Discord is an outside service, and the companion talks to you through it.
 - **Stays at home:** the language model, turning your speech into text, turning its answer
   into a voice, and everything it remembers about you.
 - **Web search** (on by default): when it looks something up, the search words leave the
-  house. With the local AI they go from that machine to DuckDuckGo and the other search sites
-  that Studio's search library asks, without an account; with Claude, to Anthropic.
+  house. They go from the machine it runs on to Google, Bing and the other search engines
+  that its SearXNG asks, without an account. With a Claude brain, Claude's own search is used
+  as well.
 - **Only if you set it:** your public GitHub repositories are read from GitHub once a day
   (`github_user`). With a brain other than `studio`, the talk goes to that company
   ([What it thinks with](#what-it-thinks-with)); its answer then ends with a line that says so.
@@ -152,19 +153,21 @@ microphone picks up the game's sound, use `name` or push-to-talk.
 ## Look things up
 
 Ask it how to get past a boss, what a tool's newest version is, or what is new in a game, and
-it searches the web before it answers. It says a few words first ("Let me look that up"), then
-gives the answer and names the source when it matters. An answer with a search takes 5 to 15
-seconds.
+it searches the web before it answers, then names the source when it matters. An answer with
+a search takes 5 to 15 seconds; in a voice channel it first says that it is looking.
 
-- **With the local AI** (`studio`) it uses Studio's own web search. That needs `tools: true`
-  in the `ai` module of that machine; without it the companion answers from what it knows.
-  Studio's other tools (running code, a terminal, editing files) stay off for the companion.
-- **With Claude** (`claude-code`, `anthropic`) it uses Claude's web search and page reading.
-  With `anthropic` each search costs money.
+- **It searches by itself**, with every brain: the module runs SearXNG (a search engine that
+  asks Google, Bing and others) in a second container, `companion-search`, on the same
+  machine. It answers only the companion and opens no port.
+- It reads at most a few result pages per answer. It never reads pages on your home network,
+  even when a web page points there.
 - What a web page says is treated as information, not as instructions. It still cannot do
   anything but answer you.
+- With `claude-code` or `anthropic`, Claude's own web search is there too. With `anthropic`
+  each of those searches costs money.
 
-`/set web off` stops it from searching; it then answers from what it knows.
+`/set web off` stops it from searching; it then answers from what it knows. `web: false` in the
+fleet file also leaves out the search container.
 
 ## What it remembers
 
@@ -193,8 +196,13 @@ you, you tell it.
 | `anthropic` | Claude, with an API key. Paid per use. | `anthropic_key` |
 | `openai` | Any service with OpenAI's API. Paid per use. | `openai_key`, `openai_model` |
 
-`brains: [studio, claude-code]` answers from home while that machine is on and asks Claude
-while it is off.
+| `backup` | A second model at home on a machine that stays on, for when the first is off (a llama.cpp server with an OpenAI-compatible API). | `backup_url`, and `backup_key` if it takes one. Nothing leaves the house. |
+
+Run the companion on a machine that is on whenever you want to talk, not on the machine with
+the graphics card if you switch that one off or play games on it. Then
+`brains: [studio, backup, claude-code]` answers from the graphics card while it is on, from the
+second model while it is off, and from Claude when neither answers. `ai_url` then names the
+machine with the graphics card.
 
 **About `claude-code`.** The companion starts the unmodified `claude` program for each
 answer, without tools and in an empty folder, and hands it your login token; it never uses

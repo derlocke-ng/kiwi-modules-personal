@@ -22,7 +22,7 @@ export function load() {
     voice: (env.VOICE || '').trim(),                    // empty: it picks one
     voiceDe: (env.VOICE_DE || '').trim(),               // the voice for German sentences, when its own speaks English only
     githubUser: (env.GITHUB_USER || '').trim(),         // public repositories as a first list of interests
-    brains: list(env.BRAINS, 'studio'),                 // who thinks, in this order: studio, claude-code, anthropic, openai
+    brains: list(env.BRAINS, 'studio'),                 // who thinks, in this order: studio, backup, claude-code, anthropic, openai
     studio: {
       url: (env.AI_URL || '').replace(/\/+$/, ''),
       key: secret('AI_KEY'),
@@ -35,6 +35,8 @@ export function load() {
     },
     claudeCode: { token: secret('CLAUDE_CODE_OAUTH_TOKEN'), model: env.CLAUDE_MODEL || 'sonnet', bin: env.CLAUDE_BIN || 'claude' },
     anthropic: { key: secret('ANTHROPIC_API_KEY'), model: env.ANTHROPIC_MODEL || 'claude-opus-5-5' },
+    backup: { url: (env.BACKUP_URL || '').replace(/\/+$/, ''), key: secret('BACKUP_KEY'), model: env.BACKUP_MODEL || '' },   // a second model at home, for when the first is off
+    searchUrl: (env.SEARCH_URL || '').replace(/\/+$/, ''),   // SearXNG: the companion's own web search
     openai: { url: (env.OPENAI_URL || 'https://api.openai.com').replace(/\/+$/, ''), key: secret('OPENAI_API_KEY'), model: env.OPENAI_MODEL || '' },
     web: bool(env.WEB, true),                           // it may look things up on the web
     listen: env.LISTEN || 'conversation',               // voice: conversation | name | always

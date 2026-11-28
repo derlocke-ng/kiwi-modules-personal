@@ -21,6 +21,10 @@ firewall:
 
 templates:
   compose: docker-compose.yml.j2
+  searxng: searxng.yml.j2
+
+outputs:
+  searxng: { path: "{{ container_prefix }}-companion-search/settings.yml", mode: 0644, when: web }
 
 derived:
   # on the machine that runs the local AI: Studio itself, on the stack network (no proxy, no certificate)
@@ -29,8 +33,10 @@ derived:
 validate:
   - when: "not owner"
     error: "companion.owner: the Discord user name or user id of the one person it answers"
-  - when: "brains | reject('in', ['studio', 'claude-code', 'anthropic', 'openai']) | list"
-    error: "companion.brains: studio, claude-code, anthropic, openai"
+  - when: "brains | reject('in', ['studio', 'backup', 'claude-code', 'anthropic', 'openai']) | list"
+    error: "companion.brains: studio, backup, claude-code, anthropic, openai"
+  - when: "'backup' in brains and not backup_url"
+    error: "companion.backup_url: the address of the second model, for brains: backup"
   - when: "'studio' in brains and not ai_url_effective"
     error: "companion.ai_url: this machine does not run the ai module; name the one that does (https://ai.<machine>.home), or take studio out of companion.brains"
   - when: "listen not in ['conversation', 'name', 'always']"
@@ -58,12 +64,12 @@ settings:
   - key: brains
     type: list
     label: What it thinks with
-    help: "In this order, the first that can answer: studio (the local AI), claude-code (Claude through the Claude Code program and your own login), anthropic or openai (an API key). Everything but studio sends the talk to that company."
+    help: "In this order, the first that can answer: studio (the local AI), backup (a second model at home, below), claude-code (Claude through the Claude Code program and your own login), anthropic or openai (an API key). claude-code, anthropic and openai send the talk to that company."
     default: [studio]
   - key: web
     type: bool
     label: Web search
-    help: "It looks things up on the web when it needs to (a game, a tool, news). With the local AI this is Studio's own web search, which needs tools: true in the ai module; with claude-code or anthropic, Claude's. Off: it answers from what it knows."
+    help: "It looks things up on the web when it needs to (a game, a tool, news), through its own SearXNG next to it, with every brain. Off: no search container, and it answers from what it knows."
     default: true
   - key: languages
     type: list
@@ -171,6 +177,32 @@ settings:
     label: Silence that ends a sentence (ms)
     help: "How long its person must be silent before what they said counts as finished. A sentence that sounds unfinished gets this long once more. Shorter answers sooner and cuts in more often."
     default: 1200
+  - key: backup_url
+    group: Backup model
+    label: Address of a second model at home
+    help: "For when the local AI is off: an OpenAI-compatible server on a machine that stays on (a llama.cpp server, https://ai.<machine>.home). Add backup to brains, after studio."
+    default: ""
+    pattern: '(https?://[0-9A-Za-z.:\[\]-]+)?'
+  - key: backup_key
+    type: secret
+    group: Backup model
+    label: Its API key
+  - key: backup_model
+    group: Backup model
+    label: Its model
+    help: "Empty: the one it has loaded."
+    default: ""
+  - key: search_secret
+    type: secret
+    group: Generated
+    label: Key of its search
+    help: "SearXNG's own key, for nothing but its sessions. Made from the seed."
+    generate: true
+  - key: search_image
+    group: Advanced
+    label: Search image
+    help: "SearXNG, pinned by its date tag."
+    default: docker.io/searxng/searxng:2026.11.26-b5605b8f2
   - key: image
     group: Advanced
     label: Image

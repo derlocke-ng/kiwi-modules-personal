@@ -52,6 +52,7 @@ export function parseSetting(setting, value) {          // -> {key: value} for t
 }
 
 export async function startBot({ cfg, store, companion, say }) {
+  companion.web.say = say;
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel, Partials.Message],
@@ -138,7 +139,8 @@ export async function startBot({ cfg, store, companion, say }) {
       const typing = setInterval(() => message.channel.sendTyping().catch(() => {}), 8000);
       let out = '';
       try {
-        for await (const piece of companion.reply(text, { via: 'dm', onNotice: (t) => message.channel.send(t).catch(() => {}) })) out += piece;
+        const onTool = () => message.channel.sendTyping().catch(() => {});
+        for await (const piece of companion.reply(text, { via: 'dm', onNotice: (t) => message.channel.send(t).catch(() => {}), onTool })) out += piece;
         const b = companion.brains.last;
         if (b && !b.local) out += `\n-# answered by ${b.label}, outside your house`;
       } catch (e) {

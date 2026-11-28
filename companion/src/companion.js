@@ -5,6 +5,7 @@ import { Memory } from './memory.js';
 import { Interests } from './interests.js';
 import { Quiet, command, called } from './quiet.js';
 import * as personaMod from './persona.js';
+import { Web } from './web.js';
 
 export class Companion {
   constructor({ cfg, store, brains }) {
@@ -14,6 +15,7 @@ export class Companion {
     this.quiet = new Quiet(store);
     this.persona = null;
     this.notices = [];                                  // what it wants to say on the side ("loading the model")
+    this.web = new Web({ searchUrl: cfg.searchUrl });
   }
 
   get off() { return !!this.store.state.off; }
@@ -36,7 +38,7 @@ export class Companion {
   }
 
   // Its answer to what he said, in pieces. via: 'dm' | 'voice' | 'console'.
-  async *reply(text, { via = 'dm', signal, onNotice } = {}) {
+  async *reply(text, { via = 'dm', signal, onNotice, onTool } = {}) {
     if (!this.persona) await this.start({ onNotice });
     this.store.log({ role: 'him', text, via });
     const sys = system({
@@ -45,7 +47,8 @@ export class Companion {
     });
     let out = '';
     try {
-      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 900, signal }, { onNotice })) {
+      const web = this.setting('web') !== false ? this.web : null;
+      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 900, signal, web, onTool }, { onNotice })) {
         out += piece;
         yield piece;
       }

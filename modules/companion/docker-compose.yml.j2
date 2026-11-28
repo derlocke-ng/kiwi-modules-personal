@@ -32,6 +32,12 @@ services:
       - OPENAI_MODEL={{ openai_model }}
       - SPEECH_THREADS={{ speech_threads }}
       - END_SILENCE_MS={{ pause }}
+      - BACKUP_URL={{ backup_url }}
+      - BACKUP_KEY={{ backup_key }}
+      - BACKUP_MODEL={{ backup_model }}
+{% if web %}
+      - SEARCH_URL=http://{{ container_prefix }}-companion-search:8080
+{% endif %}
 {% if ca_cert_dir %}
       - NODE_EXTRA_CA_CERTS=/kiwi-ca/kiwiCA.crt
 {% endif %}
@@ -58,6 +64,34 @@ services:
       - companion_models:/models
 {% if ca_cert_dir %}
       - {{ ca_cert_dir }}:/kiwi-ca:ro,z
+{% endif %}
+
+{% if web %}
+  # SearXNG: the companion's own web search. It asks the search engines from this machine and
+  # answers only on the stack network (no port, no site of the proxy).
+  {{ container_prefix }}-companion-search:
+    image: {{ search_image }}
+    container_name: {{ container_prefix }}-companion-search
+    environment:
+      - SEARXNG_SECRET={{ search_secret }}
+      - SEARXNG_BASE_URL=http://{{ container_prefix }}-companion-search:8080/
+    networks:
+      {{ network_name }}: {}
+    tmpfs: [/var/cache/searxng]
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+    volumes:
+      - {{ docker_dir }}/{{ container_prefix }}-companion-search/settings.yml:/etc/searxng/settings.yml:ro,z
 {% endif %}
 
 volumes:

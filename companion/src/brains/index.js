@@ -1,5 +1,5 @@
-// Who thinks: the brains in the order of the setting, the first that can answer. The model at
-// home comes first by default; a brain outside the house is named in the answer's footer.
+// Who thinks: the brains in the order of the setting, the first that can answer. The models at
+// home come first by default; a brain outside the house is named in the answer's footer.
 import { OpenAIBrain } from './openai.js';
 import { ClaudeCodeBrain } from './claudecode.js';
 import { AnthropicBrain } from './anthropic.js';
@@ -10,6 +10,7 @@ export function makeBrains(cfg) {
     'claude-code': () => new ClaudeCodeBrain({ ...cfg.claudeCode, web: cfg.web }),
     anthropic: () => new AnthropicBrain({ ...cfg.anthropic, web: cfg.web }),
     openai: () => new OpenAIBrain({ name: 'openai', label: 'an OpenAI-compatible service', url: cfg.openai.url, key: cfg.openai.key, model: cfg.openai.model }),
+    backup: () => new OpenAIBrain({ name: 'backup', label: 'the backup model at home', url: cfg.backup.url, key: cfg.backup.key, model: cfg.backup.model, local: true }),
   };
   return new Brains(cfg.brains.filter((n) => all[n]).map((n) => all[n]()));
 }
@@ -17,7 +18,7 @@ export function makeBrains(cfg) {
 export class Brains {
   constructor(list) { this.list = list; this.last = null; }
 
-  setWeb(on) { for (const b of this.list) if ('web' in b && !b.studio) b.web = on; for (const b of this.list) if (b.studio) b.studio.web = on; }
+  setWeb(on) { for (const b of this.list) { if (b.studio) b.studio.web = on; else if ('web' in b) b.web = on; b.webOn = on; } }
 
   // {brain} or {why: [...]}: the first brain that can answer
   async pick(opts = {}) {

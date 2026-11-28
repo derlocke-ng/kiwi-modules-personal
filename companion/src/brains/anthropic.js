@@ -9,7 +9,7 @@ export class AnthropicBrain {
 
   async ready() { return this.client ? { ok: true } : { ok: false, why: 'no API key' }; }
 
-  async *stream({ system, messages, maxTokens = 1000, signal }) {
+  async *stream({ system, messages, maxTokens = 1000, signal, onTool }) {
     // The persona and notes change rarely: cached. A chat answer needs little thinking: effort low.
     // A request the model declines is answered by the fallback Anthropic chooses.
     const stream = this.client.beta.messages.stream({
@@ -22,6 +22,7 @@ export class AnthropicBrain {
     let said = false;
     try {
       for await (const event of stream) {
+        if (event.type === 'content_block_start' && event.content_block.type === 'server_tool_use') onTool?.(event.content_block.name);
         if (event.type === 'content_block_start' && event.content_block.type === 'text' && said) yield ' ';
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') { said = true; yield event.delta.text; }
       }

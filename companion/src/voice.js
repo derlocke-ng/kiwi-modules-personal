@@ -13,6 +13,7 @@ import { Readable } from 'node:stream';
 import { Speech, Sentences, toPcm, fromPcm } from './speech.js';
 import { ensure, needed } from './models.js';
 import { called, command } from './quiet.js';
+import { language } from './voices.js';
 
 const OpusScript = createRequire(import.meta.url)('opusscript');
 const ATTENTIVE_MS = 45 * 1000;          // "conversation": after it spoke, he can go on without its name this long
@@ -69,7 +70,9 @@ export async function makeVoice({ cfg, store, companion, say, presence }) {
     let chain = Promise.resolve();
     const speak = (s) => { chain = chain.then(() => speakText(s, my)).catch((e) => say('speaking failed:', e.message)); };
     try {
-      for await (const piece of companion.reply(text, { via: 'voice', signal: my.abort.signal })) {
+      // a search takes seconds: if it has said nothing yet, it says that it is looking
+      const onTool = () => { if (!my.timing.firstWord && !my.filler && my === answer) { my.filler = true; speak(language(text, cfg.languages[0]) === 'de' ? 'Moment, ich schau nach.' : 'Let me look that up.'); } };
+      for await (const piece of companion.reply(text, { via: 'voice', signal: my.abort.signal, onTool })) {
         if (my !== answer) break;
         my.timing.firstWord ||= Date.now();
         cut.feed(piece).forEach(speak);

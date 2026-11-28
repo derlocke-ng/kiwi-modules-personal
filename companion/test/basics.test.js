@@ -127,3 +127,42 @@ test('a sentence goes to a voice that speaks its language; an unknown voice fall
   assert.equal(typeof parseSetting('voice', 'nobody'), 'string');
   assert.equal(typeof parseSetting('german', 'heart'), 'string');
 });
+
+test('a web page may not lead it into the home network', async () => {
+  const { isPrivate, pageText, Web } = await import('../src/web.js');
+  for (const ip of ['10.9.0.14', '192.168.2.1', '172.20.0.5', '127.0.0.1', '::1', 'fd00::1', '::ffff:192.168.2.68', '169.254.1.1']) assert.equal(isPrivate(ip), true, ip);
+  for (const ip of ['1.1.1.1', '172.32.0.1', '2a00:1450::1']) assert.equal(isPrivate(ip), false, ip);
+  const w = new Web({ searchUrl: '' });
+  for (const u of ['http://ai.lemonaide.home/v1', 'http://192.168.2.1/', 'http://localhost:8000', 'file:///etc/passwd']) assert.match(await w.read(u), /home network|Only http/, u);
+  assert.deepEqual(pageText('<html><title>T</title><script>x()</script><p>One &amp; two</p><p>three</p></html>'), { title: 'T', text: 'T One & two\nthree' });
+});
+
+test('the companion runs the tools a model asks for, then streams its answer', async () => {
+  const { OpenAIBrain } = await import('../src/brains/openai.js');
+  const http = await import('node:http');
+  let round = 0; const seen = [];
+  const srv = http.createServer((req, res) => {
+    let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => {
+      const body = JSON.parse(b); seen.push(body);
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      const send = (o) => res.write('data: ' + JSON.stringify(o) + '\n\n');
+      if (round++ === 0) {
+        send({ choices: [{ delta: { content: 'Let me look.' } }] });
+        send({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'c1', function: { name: 'web_search', arguments: '{"query":' } }] } }] });
+        send({ choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"eveque boss"}' } }] }, finish_reason: 'tool_calls' }] });
+      } else send({ choices: [{ delta: { content: 'Ice works.' }, finish_reason: 'stop' }] });
+      res.end('data: [DONE]\n\n');
+    });
+  }).listen(0);
+  const brain = new OpenAIBrain({ name: 'backup', label: 'b', url: 'http://127.0.0.1:' + srv.address().port, key: '', local: true });
+  const ran = [];
+  const web = { on: true, run: async (n, a) => { ran.push([n, a]); return '1. IGN guide'; } };
+  let out = '';
+  for await (const p of brain.stream({ system: 's', messages: [{ role: 'user', content: 'boss?' }], web })) out += p;
+  srv.close();
+  assert.equal(out, 'Let me look. Ice works.');
+  assert.deepEqual(ran, [['web_search', { query: 'eveque boss' }]]);
+  assert.equal(seen[0].tools.length, 2);
+  assert.deepEqual(seen[1].messages.slice(-2).map((m) => m.role), ['assistant', 'tool']);
+  assert.equal(seen[1].messages.at(-1).content, '1. IGN guide');
+});

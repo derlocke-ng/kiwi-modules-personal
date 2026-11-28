@@ -32,7 +32,7 @@ export class ClaudeCodeBrain {
     return found ? { ok: true } : { ok: false, why: this.why };
   }
 
-  async *stream({ system, messages, signal }) {
+  async *stream({ system, messages, signal, onTool }) {
     // one prompt per answer: the talk so far, then his new message
     const last = messages[messages.length - 1];
     const before = messages.slice(0, -1).map((m) => `${m.role === 'user' ? 'Him' : 'You'}: ${m.content}`).join('\n');
@@ -53,7 +53,9 @@ export class ClaudeCodeBrain {
     try {
       for await (const line of readline.createInterface({ input: child.stdout })) {
         let d; try { d = JSON.parse(line); } catch { continue; }
-        if (d.type === 'stream_event' && d.event?.type === 'content_block_start' && d.event.content_block?.type === 'text' && streamed) {
+        if (d.type === 'stream_event' && d.event?.type === 'content_block_start' && /tool_use/.test(d.event.content_block?.type || '')) {
+          onTool?.(d.event.content_block.name);
+        } else if (d.type === 'stream_event' && d.event?.type === 'content_block_start' && d.event.content_block?.type === 'text' && streamed) {
           yield ' ';                                  // a new block after a search: keep the words apart
         } else if (d.type === 'stream_event' && d.event?.type === 'content_block_delta' && d.event.delta?.type === 'text_delta') {
           streamed = true;
