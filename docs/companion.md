@@ -22,6 +22,9 @@ Discord is an outside service, and the companion talks to you through it.
 - **Its address.** Discord sees the Internet address of the machine the companion runs on.
 - **Stays at home:** the language model, turning your speech into text, turning its answer
   into a voice, and everything it remembers about you.
+- **Web search** (on by default): when it looks something up, the search words leave the
+  house. With the local AI they go from that machine to DuckDuckGo and the other search sites
+  that Studio's search library asks, without an account; with Claude, to Anthropic.
 - **Only if you set it:** your public GitHub repositories are read from GitHub once a day
   (`github_user`). With a brain other than `studio`, the talk goes to that company
   ([What it thinks with](#what-it-thinks-with)); its answer then ends with a line that says so.
@@ -72,6 +75,7 @@ On a machine without the `ai` module, set `ai_url` to the machine that has it
 | Setting | Default | Meaning |
 |---|---|---|
 | `brains` | `[studio]` | What it thinks with, in this order. See [What it thinks with](#what-it-thinks-with). |
+| `web` | `true` | It may look things up on the web. See [Look things up](#look-things-up). |
 | `languages` | `[en, de]` | The languages you use with it. The first is assumed when a sentence could be either. |
 | `listen` | `conversation` | When it answers in a voice channel. See [Talk to it aloud](#talk-to-it-aloud). |
 | `checkin` | `off` | A time window such as `18:00-22:00`: it writes first, once a day in that window, if you have not written that day. |
@@ -96,7 +100,7 @@ commands work in the direct message and in the server:
 | `/forget N`, `/forget all` | Removes one note, or everything: the notes, the summary and the talk so far. |
 | `/interest text` | Something you are into, to talk about. |
 | `/join`, `/leave` | It comes into the voice channel you are in, or leaves it. |
-| `/set setting value` | Changes `listen`, `checkin`, `load`, `pause`, `name`, `voice` or `german` (its German voice) while it runs. |
+| `/set setting value` | Changes `web`, `listen`, `checkin`, `load`, `pause`, `name`, `voice` or `german` (its German voice) while it runs. |
 
 Writing "be quiet", "shut up", "Ruhe" or "sei still" as a whole message does the same as
 `/quiet`.
@@ -144,6 +148,23 @@ hear it. Kokoro, Kitten and Piper take their pronunciation from espeak-ng throug
 **Known gaps.** Technical words are often misheard ("Btrfs" became "BTAPs" in the tests).
 The model is told to guess from what it knows, which does not always work. If your
 microphone picks up the game's sound, use `name` or push-to-talk.
+
+## Look things up
+
+Ask it how to get past a boss, what a tool's newest version is, or what is new in a game, and
+it searches the web before it answers. It says a few words first ("Let me look that up"), then
+gives the answer and names the source when it matters. An answer with a search takes 5 to 15
+seconds.
+
+- **With the local AI** (`studio`) it uses Studio's own web search. That needs `tools: true`
+  in the `ai` module of that machine; without it the companion answers from what it knows.
+  Studio's other tools (running code, a terminal, editing files) stay off for the companion.
+- **With Claude** (`claude-code`, `anthropic`) it uses Claude's web search and page reading.
+  With `anthropic` each search costs money.
+- What a web page says is treated as information, not as instructions. It still cannot do
+  anything but answer you.
+
+`/set web off` stops it from searching; it then answers from what it knows.
 
 ## What it remembers
 

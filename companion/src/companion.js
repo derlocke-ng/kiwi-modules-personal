@@ -41,11 +41,11 @@ export class Companion {
     this.store.log({ role: 'him', text, via });
     const sys = system({
       persona: this.persona, notes: this.store.notes(), interests: this.interests.text(), summary: this.memory.summary(),
-      languages: this.cfg.languages, mode: via === 'voice' ? 'voice' : 'dm',
+      languages: this.cfg.languages, mode: via === 'voice' ? 'voice' : 'dm', web: this.setting('web') !== false,
     });
     let out = '';
     try {
-      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 220 : 600, signal }, { onNotice })) {
+      for await (const piece of this.brains.stream({ system: sys, messages: this.memory.context(), maxTokens: via === 'voice' ? 300 : 900, signal }, { onNotice })) {
         out += piece;
         yield piece;
       }
@@ -72,7 +72,7 @@ export class Companion {
     const lines = [
       `I am ${this.persona?.name || '(not named yet)'}${this.off ? ', switched off' : ''}; ${this.quiet.describe()}.`,
       pick.brain ? `Thinking with ${pick.brain.label}${pick.brain.local ? '' : ' (outside your house)'}.` : `Nobody to think with: ${pick.why.join('; ')}.`,
-      `I know ${this.store.notes().length} things about you. Voice: I listen in mode "${this.setting('listen')}". Writing first: ${this.setting('checkin')}.`,
+      `I know ${this.store.notes().length} things about you. Web search: ${this.setting('web') !== false ? 'on' : 'off'}. Voice: I listen in mode "${this.setting('listen')}". Writing first: ${this.setting('checkin')}.`,
     ];
     return lines.join('\n');
   }

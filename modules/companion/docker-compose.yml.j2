@@ -11,6 +11,7 @@ services:
       - BRAINS={{ brains | join(',') }}
       - LANGUAGES={{ languages | join(',') }}
       - GITHUB_USER={{ github_user }}
+      - WEB={{ '1' if web else '0' }}
       - LISTEN={{ listen }}
       - CHECKIN={{ checkin }}
       - NAME={{ name }}

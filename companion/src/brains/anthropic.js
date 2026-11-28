@@ -2,8 +2,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 export class AnthropicBrain {
-  constructor({ key, model = 'claude-opus-5-5' }) {
-    Object.assign(this, { name: 'anthropic', label: 'Claude (Anthropic API)', local: false, key, model });
+  constructor({ key, model = 'claude-opus-5-5', web = true }) {
+    Object.assign(this, { name: 'anthropic', label: 'Claude (Anthropic API)', local: false, key, model, web });
     this.client = key ? new Anthropic({ apiKey: key }) : null;
   }
 
@@ -16,11 +16,14 @@ export class AnthropicBrain {
       model: this.model, max_tokens: maxTokens,
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
       messages, output_config: { effort: 'low' },
+      ...(this.web ? { tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }] } : {}),
       betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
     }, { signal });
+    let said = false;
     try {
       for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') yield event.delta.text;
+        if (event.type === 'content_block_start' && event.content_block.type === 'text' && said) yield ' ';
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') { said = true; yield event.delta.text; }
       }
       const final = await stream.finalMessage();
       if (final.stop_reason === 'refusal') throw new Error('Claude declined to answer this');

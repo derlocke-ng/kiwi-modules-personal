@@ -7,8 +7,8 @@ import { AnthropicBrain } from './anthropic.js';
 export function makeBrains(cfg) {
   const all = {
     studio: () => new OpenAIBrain({ name: 'studio', label: 'the model at home', url: cfg.studio.url, key: cfg.studio.key, local: true, studio: cfg.studio }),
-    'claude-code': () => new ClaudeCodeBrain(cfg.claudeCode),
-    anthropic: () => new AnthropicBrain(cfg.anthropic),
+    'claude-code': () => new ClaudeCodeBrain({ ...cfg.claudeCode, web: cfg.web }),
+    anthropic: () => new AnthropicBrain({ ...cfg.anthropic, web: cfg.web }),
     openai: () => new OpenAIBrain({ name: 'openai', label: 'an OpenAI-compatible service', url: cfg.openai.url, key: cfg.openai.key, model: cfg.openai.model }),
   };
   return new Brains(cfg.brains.filter((n) => all[n]).map((n) => all[n]()));
@@ -16,6 +16,8 @@ export function makeBrains(cfg) {
 
 export class Brains {
   constructor(list) { this.list = list; this.last = null; }
+
+  setWeb(on) { for (const b of this.list) if ('web' in b && !b.studio) b.web = on; for (const b of this.list) if (b.studio) b.studio.web = on; }
 
   // {brain} or {why: [...]}: the first brain that can answer
   async pick(opts = {}) {

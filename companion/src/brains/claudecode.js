@@ -9,8 +9,8 @@ import path from 'node:path';
 import readline from 'node:readline';
 
 export class ClaudeCodeBrain {
-  constructor({ token = '', model = 'sonnet', bin = 'claude' }) {
-    Object.assign(this, { name: 'claude-code', label: 'Claude (through Claude Code)', local: false, token, model, bin });
+  constructor({ token = '', model = 'sonnet', bin = 'claude', web = true }) {
+    Object.assign(this, { name: 'claude-code', label: 'Claude (through Claude Code)', local: false, token, model, bin, web });
     this.cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'companion-cc-'));      // an empty folder: no project, no files
   }
 
@@ -37,9 +37,11 @@ export class ClaudeCodeBrain {
     const last = messages[messages.length - 1];
     const before = messages.slice(0, -1).map((m) => `${m.role === 'user' ? 'Him' : 'You'}: ${m.content}`).join('\n');
     const prompt = (before ? `The talk so far:\n${before}\n\n` : '') + `His new message:\n${last.content}\n\nAnswer him now, as yourself. Only your answer. ` +
-      'You have no tools and you cannot see his computer: leave out anything you were told about this computer, its system or its folders.';
+      'You cannot see his computer: leave out anything you were told about this computer, its system or its folders.';
+    // its only tools: searching and reading the web (they run at Anthropic, under his own login)
+    const tools = this.web ? ['--tools', 'WebSearch,WebFetch', '--allowedTools', 'WebSearch,WebFetch'] : ['--tools', ''];
     const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--no-session-persistence',
-      '--tools', '', '--disable-slash-commands', '--strict-mcp-config', '--setting-sources', '', '--system-prompt', system];
+      ...tools, '--disable-slash-commands', '--strict-mcp-config', '--setting-sources', '', '--system-prompt', system];
     if (this.model) args.push('--model', this.model);
     const child = spawn(this.bin, args, { env: this.env(), cwd: this.cwd, stdio: ['pipe', 'pipe', 'pipe'] });
     const stop = () => child.kill('SIGTERM');
@@ -51,7 +53,9 @@ export class ClaudeCodeBrain {
     try {
       for await (const line of readline.createInterface({ input: child.stdout })) {
         let d; try { d = JSON.parse(line); } catch { continue; }
-        if (d.type === 'stream_event' && d.event?.type === 'content_block_delta' && d.event.delta?.type === 'text_delta') {
+        if (d.type === 'stream_event' && d.event?.type === 'content_block_start' && d.event.content_block?.type === 'text' && streamed) {
+          yield ' ';                                  // a new block after a search: keep the words apart
+        } else if (d.type === 'stream_event' && d.event?.type === 'content_block_delta' && d.event.delta?.type === 'text_delta') {
           streamed = true;
           yield d.event.delta.text;
         } else if (d.type === 'result') {

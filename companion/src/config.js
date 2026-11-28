@@ -31,10 +31,12 @@ export function load() {
       context: int(env.AI_CONTEXT, 262144),
       mayLoad: bool(env.AI_LOAD, true),
       topK: int(env.AI_TOP_K, 20),
+      web: bool(env.WEB, true),
     },
     claudeCode: { token: secret('CLAUDE_CODE_OAUTH_TOKEN'), model: env.CLAUDE_MODEL || 'sonnet', bin: env.CLAUDE_BIN || 'claude' },
     anthropic: { key: secret('ANTHROPIC_API_KEY'), model: env.ANTHROPIC_MODEL || 'claude-opus-5-5' },
     openai: { url: (env.OPENAI_URL || 'https://api.openai.com').replace(/\/+$/, ''), key: secret('OPENAI_API_KEY'), model: env.OPENAI_MODEL || '' },
+    web: bool(env.WEB, true),                           // it may look things up on the web
     listen: env.LISTEN || 'conversation',               // voice: conversation | name | always
     checkin: env.CHECKIN || 'off',                      // off, or "18:00-22:00" (one message a day in that window)
     speech: {

@@ -7,6 +7,8 @@ export class OpenAIBrain {
     Object.assign(this, { name, label, url, key, model, local, studio });
   }
 
+  get web() { return !!(this.studio && this.studio.web && !this.noWeb); }
+
   headers() { return { Authorization: 'Bearer ' + this.key, 'Content-Type': 'application/json' }; }
 
   async call(path, body, timeoutMs = 8000) {
@@ -52,9 +54,18 @@ export class OpenAIBrain {
       messages: [{ role: 'system', content: system }, ...messages],
     };
     if (this.studio) Object.assign(body, { top_k: this.studio.topK, enable_thinking: false });
-    const r = await fetch(this.url + '/v1/chat/completions', { method: 'POST', headers: this.headers(), body: JSON.stringify(body), signal });
+    // Studio's own web search (the ai module with tools: true): only that tool, run without asking
+    const web = this.studio && this.studio.web && !this.noWeb;
+    if (web) Object.assign(body, { enable_tools: true, enabled_tools: ['web_search'], permission_mode: 'off', confirm_tool_calls: false,
+      max_tool_calls_per_message: 4, tool_call_timeout: 30, nudge_tool_calls: true });
+    let r = await fetch(this.url + '/v1/chat/completions', { method: 'POST', headers: this.headers(), body: JSON.stringify(body), signal });
+    if (!r.ok && web && r.status === 400) {             // Studio started without its tools: answer without the web, and say so once
+      this.noWeb = true;
+      for (const k of ['enable_tools', 'enabled_tools', 'permission_mode', 'confirm_tool_calls', 'max_tool_calls_per_message', 'tool_call_timeout']) delete body[k];
+      r = await fetch(this.url + '/v1/chat/completions', { method: 'POST', headers: this.headers(), body: JSON.stringify(body), signal });
+    }
     if (!r.ok) throw new Error(`${this.label} says ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    let buf = '';
+    let buf = '', last = '';
     const dec = new TextDecoder();
     for await (const chunk of r.body) {
       buf += dec.decode(chunk, { stream: true });
@@ -64,8 +75,11 @@ export class OpenAIBrain {
         buf = buf.slice(nl + 1);
         if (!line.startsWith('data:') || line === 'data: [DONE]') continue;
         let d; try { d = JSON.parse(line.slice(5)); } catch { continue; }
-        const piece = d.choices?.[0]?.delta?.content;
-        if (piece) yield piece;
+        let piece = d.choices?.[0]?.delta?.content;
+        if (!piece) continue;
+        if (/[.!?:]$/.test(last) && /^[\p{Lu}"„(]/u.test(piece)) piece = ' ' + piece;      // text before and after a search, glued
+        last = piece.slice(-1);
+        yield piece;
       }
     }
   }

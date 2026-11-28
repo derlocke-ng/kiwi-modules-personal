@@ -60,6 +60,11 @@ settings:
     label: What it thinks with
     help: "In this order, the first that can answer: studio (the local AI), claude-code (Claude through the Claude Code program and your own login), anthropic or openai (an API key). Everything but studio sends the talk to that company."
     default: [studio]
+  - key: web
+    type: bool
+    label: Web search
+    help: "It looks things up on the web when it needs to (a game, a tool, news). With the local AI this is Studio's own web search, which needs tools: true in the ai module; with claude-code or anthropic, Claude's. Off: it answers from what it knows."
+    default: true
   - key: languages
     type: list
     label: Languages
