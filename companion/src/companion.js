@@ -7,6 +7,10 @@ import { Quiet, command, called } from './quiet.js';
 import * as personaMod from './persona.js';
 import { Web } from './web.js';
 
+const TERMS = ['WireGuard', 'Tailscale', 'Podman', 'Docker', 'Btrfs', 'ext4', 'ZFS', 'Linux', 'Fedora', 'Bluefin', 'uCore', 'CoreOS', 'Debian', 'Armbian',
+  'Kubernetes', 'Proxmox', 'Nextcloud', 'Immich', 'Vaultwarden', 'Pi-hole', 'nginx', 'gluetun', 'Mullvad', 'Tor', 'SSH', 'DNS', 'DHCP', 'VPN', 'NAS', 'GPU',
+  'Python', 'Bash', 'Rust', 'GitHub', 'Discord', 'Steam', 'kiwi-server', 'kiwi-modules', 'kiwi-stack'];
+
 export class Companion {
   constructor({ cfg, store, brains }) {
     Object.assign(this, { cfg, store, brains });
@@ -21,6 +25,12 @@ export class Companion {
   get off() { return !!this.store.state.off; }
   setting(key) { return this.store.state[key] ?? this.cfg[key]; }
   names() { return [this.persona?.name, ...(this.persona?.heardAs || [])].filter(Boolean); }
+
+  // words speech recognition should hear as written: its name, his projects, the usual terms
+  hotwords() {
+    const repos = [...this.interests.text().matchAll(/^- ([A-Za-z0-9][\w.-]{2,40})(?: \(|:)/gm)].map((m) => m[1]);
+    return [...new Set([...this.names(), ...repos, ...(this.cfg.hotwords || []), ...TERMS])].slice(0, 120);
+  }
 
   async start(opts = {}) {
     this.persona = await personaMod.ensure(this.store, this.brains, this.cfg, opts);
@@ -44,6 +54,7 @@ export class Companion {
     const sys = system({
       persona: this.persona, notes: this.store.notes(), interests: this.interests.text(), summary: this.memory.summary(),
       languages: this.cfg.languages, mode: via === 'voice' ? 'voice' : 'dm', web: this.setting('web') !== false,
+      words: via === 'voice' ? this.hotwords() : null,
     });
     let out = '';
     try {

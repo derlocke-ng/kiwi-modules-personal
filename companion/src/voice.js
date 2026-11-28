@@ -88,7 +88,7 @@ export async function makeVoice({ cfg, store, companion, say, presence }) {
 
   async function heard(samples, spokenMs, endedAt) {
     let text = '';
-    try { text = await speech.hear(samples, 48000); } catch (e) { say('hearing failed:', e.message); }
+    try { text = await speech.hear(samples, 48000, companion.hotwords()); } catch (e) { say('hearing failed:', e.message); }
     const words = text.split(/\s+/).filter(Boolean).length;
     if (!text || (spokenMs < 350 && words < 2)) return resume();          // a cough, a key, the game: go on where it was
     if (companion.off) return;

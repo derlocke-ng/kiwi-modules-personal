@@ -9,7 +9,7 @@ function when(now = new Date()) {                       // coarse on purpose: th
   return `${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${part} (about ${h}:00)`;
 }
 
-export function system({ persona, notes, interests, summary, languages, mode = 'dm', web = false, now }) {
+export function system({ persona, notes, interests, summary, languages, mode = 'dm', web = false, words = null, now }) {
   const langs = languages.map((l) => LANG[l] || l).join(' or ');
   const lines = [
     `You are ${persona.name}. ${persona.about || ''}`.trim(),
@@ -40,8 +40,10 @@ export function system({ persona, notes, interests, summary, languages, mode = '
   if (mode === 'voice') {
     lines.push('',
       'Right now you two are talking aloud in a voice channel. Your words are spoken by a voice:',
-      '- One to three short sentences. No symbols, no emoji, no lists; say numbers and units as words.',
-      '- What he says reaches you through speech recognition, which mishears technical words and names. Guess what he meant from what you know; ask only when it matters.',
+      '- Talk the way people talk, not the way they write: short sentences, contractions ("that\'s", "you\'re"), plain words, a small reaction first when it fits ("oh nice", "hm", "yeah"). One to three sentences.',
+      '- No symbols, no emoji, no lists, no brackets; say numbers, versions and units the way you would say them aloud.',
+      '- What he says reaches you through speech recognition, which mishears technical words and names: "BTAFs" may be Btrfs, "XT4" ext4, "Gluten" gluetun. Guess what he meant from what you know; ask only when it matters.' +
+        (words?.length ? ` Words he often uses: ${words.join(', ')}.` : ''),
       '- He may be playing a game. Keep it short when he sounds busy.');
   }
   return lines.filter((l) => l !== null).join('\n');

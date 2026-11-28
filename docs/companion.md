@@ -135,7 +135,7 @@ and German.
 | Voices | Speak | What they are |
 |---|---|---|
 | `heart`, `bella`, `nicole`, `sky`, `emma`, `michael`, `fenrir`, `puck`, `george`, `fable` | English | Kokoro. The most natural ones; it picks one of these by itself. |
-| `bria`, `loona` | English | Pocket TTS. |
+| `andrea`, `wah`, `robert`, `sirajo`, `jeff`, `d617b`, `d468c`, `d9a2e`, `kditz`, `wizard`, `bria`, `loona` | English | Pocket TTS. It copies the voice of a 10-second recording of a real person, so it sounds the most natural. The recordings come from Kyutai's voice donation project (CC0) and are fetched when the voice is first used. |
 | `kitten1` to `kitten8` | English | Kitten. |
 | `ryan` | English | Piper. Plain, and the quickest. |
 | `thorsten` | German | Piper. |
@@ -146,8 +146,9 @@ that fits it. `/set voice george` changes the voice while it runs, and it says a
 hear it. Kokoro, Kitten and Piper take their pronunciation from espeak-ng through
 `piper-phonemize-node`, which is under the GPL, version 3 or later.
 
-**Known gaps.** Technical words are often misheard ("Btrfs" became "BTAPs" in the tests).
-The model is told to guess from what it knows, which does not always work. If your
+**Known gaps.** Technical words are often misheard ("Btrfs" became "BTAFs" in the tests). It
+hears its own name, your repositories and a list of common terms more readily, and the model
+is given those words to guess from; that helps, but does not always work. If your
 microphone picks up the game's sound, use `name` or push-to-talk.
 
 ## Look things up

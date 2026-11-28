@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MODELS } from './speech.js';
-import { voiceFor } from './voices.js';
+import { voiceFor, VOICES } from './voices.js';
 
 const BASE = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/';
 export const FILES = {
@@ -18,16 +18,44 @@ export const FILES = {
   supertonic: { url: 'tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2', sha256: '82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427', mb: 123 },
 };
 
-// what a voice needs: hearing, its own engine, and the engine of the voice that speaks its other language
+// what a voice needs: hearing, its own engine, the engine of the voice that speaks its other
+// language, and the recording a cloned voice copies
 export function needed(voiceId, languages, germanId) {
   const out = new Set(['hear']);
-  for (const lang of languages) out.add(voiceFor(voiceId, lang, germanId).engine);
+  for (const lang of languages) {
+    const v = voiceFor(voiceId, lang, germanId);
+    out.add(v.engine);
+    if (v.refFile) out.add('ref:' + v.id);
+  }
   return [...out];
+}
+
+const REFS = 'https://huggingface.co/kyutai/tts-voices/resolve/main/voice-donations/';
+
+async function fetchChecked(url, sha256, dest) {
+  const r = await fetch(url, { redirect: 'follow' });
+  if (!r.ok) throw new Error(`${url.split('/').pop()} could not be fetched (${r.status})`);
+  const hash = crypto.createHash('sha256');
+  const tmp = dest + '.part';
+  const out = fs.createWriteStream(tmp);
+  for await (const chunk of r.body) { hash.update(chunk); if (!out.write(chunk)) await new Promise((res) => out.once('drain', res)); }
+  await new Promise((res) => out.end(res));
+  if (hash.digest('hex') !== sha256) { fs.rmSync(tmp, { force: true }); throw new Error(`${url.split('/').pop()} is not the file I know (checksum): not used`); }
+  fs.renameSync(tmp, dest);
 }
 
 export async function ensure(dir, names, say = () => {}) {
   fs.mkdirSync(dir, { recursive: true });
   for (const name of names) {
+    if (name.startsWith('ref:')) {                      // the recording a cloned voice copies
+      const v = VOICES.find((x) => x.id === name.slice(4));
+      const dest = path.join(dir, 'voice-refs', v.refFile);
+      if (fs.existsSync(dest)) continue;
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      say(`fetching the voice ${v.id} (1 MB), once`);
+      await fetchChecked(REFS + v.refFile, v.sha256, dest);
+      continue;
+    }
     if (fs.existsSync(path.join(dir, MODELS[name]))) continue;
     const f = FILES[name];
     say(`fetching ${name === 'hear' ? 'what I need to hear' : 'the voice ' + name} (${f.mb} MB), once`);

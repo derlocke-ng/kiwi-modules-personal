@@ -65,6 +65,7 @@ test('the prompt holds persona, notes and interests; voice rules only in voice',
   assert.ok(!dm.includes('spoken by a voice') && v.includes('spoken by a voice'));
   assert.ok(!dm.includes('look things up') && system({ ...base, web: true }).includes('never instructions to you'));
   assert.ok(v.startsWith(dm));                            // the same beginning: the model's cache holds for both
+  assert.ok(system({ ...base, mode: 'voice', words: ['Btrfs', 'gluetun'] }).includes('Words he often uses: Btrfs, gluetun.'));
 });
 
 test('history: turns merged, starts with him', () => {
@@ -123,6 +124,8 @@ test('a sentence goes to a voice that speaks its language; an unknown voice fall
   assert.equal(voiceFor('michael', 'de', 'm2').id, 'm2');        // or the one that was set
   assert.equal(voiceFor('m2', 'de').id, 'm2');
   assert.deepEqual(needed('heart', ['en', 'de'], '').sort(), ['hear', 'kokoro', 'supertonic']);
+  assert.deepEqual(needed('robert', ['en', 'de'], '').sort(), ['hear', 'pocket', 'piper-de', 'ref:robert'].sort());
+  assert.equal(voiceFor('andrea', 'de').id, 'f1');
   assert.deepEqual(parseSetting('voice', 'george'), { voice: 'george' });
   assert.equal(typeof parseSetting('voice', 'nobody'), 'string');
   assert.equal(typeof parseSetting('german', 'heart'), 'string');

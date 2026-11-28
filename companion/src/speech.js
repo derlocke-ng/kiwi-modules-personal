@@ -39,17 +39,22 @@ export class Speech {
 
   async init() {                                        // hearing now; each voice when first used
     const p = path.join(this.dir, MODELS.hear);
+    // hot words (technical terms, names) need the model's word pieces as a vocabulary file
+    const vocab = path.join(p, 'bpe.vocab');
+    if (!fs.existsSync(vocab)) fs.writeFileSync(vocab, fs.readFileSync(path.join(p, 'tokens.txt'), 'utf8').split('\n').filter((l) => l.trim())
+      .map((l) => `${l.split(' ')[0]}\t-1.0`).join('\n') + '\n');
     this.rec ||= await sherpa.OfflineRecognizer.createAsync({
       featConfig: { sampleRate: 16000, featureDim: 80 },
       modelConfig: { transducer: { encoder: path.join(p, 'encoder.int8.onnx'), decoder: path.join(p, 'decoder.int8.onnx'), joiner: path.join(p, 'joiner.int8.onnx') },
-        tokens: path.join(p, 'tokens.txt'), numThreads: this.threads, provider: 'cpu', debug: 0, modelType: 'nemo_transducer' },
+        tokens: path.join(p, 'tokens.txt'), numThreads: this.threads, provider: 'cpu', debug: 0, modelType: 'nemo_transducer', modelingUnit: 'bpe', bpeVocab: vocab },
+      decodingMethod: 'modified_beam_search', maxActivePaths: 4, hotwordsScore: 2.0,
     });
     return this;
   }
 
-  // what was said: samples as Float32Array, one channel, at `sampleRate`
-  async hear(samples, sampleRate) {
-    const st = this.rec.createStream();
+  // what was said: samples as Float32Array, one channel, at `sampleRate`; hot words are heard more readily
+  async hear(samples, sampleRate, hotwords = []) {
+    const st = hotwords.length ? this.rec.createStream(hotwords.join('/')) : this.rec.createStream();
     st.acceptWaveform({ sampleRate, samples });
     await this.rec.decodeAsync(st);
     return String(this.rec.getResult(st).text || '').trim();
@@ -69,8 +74,9 @@ export class Speech {
     let cfg;
     if (v.engine === 'supertonic') cfg = { sid: v.sid, speed: 1.0, numSteps: 12, extra: { lang } };
     else if (v.engine === 'pocket') {
-      const ref = (this.refs[v.ref] ||= sherpa.readWave(path.join(this.dir, MODELS.pocket, 'test_wavs', v.ref + '.wav')));
-      cfg = { speed: 1.0, referenceAudio: ref.samples, referenceSampleRate: ref.sampleRate, numSteps: 5, extra: { max_reference_audio_len: 12, seed: 42 } };
+      const file = v.refFile ? path.join(this.dir, 'voice-refs', v.refFile) : path.join(this.dir, MODELS.pocket, 'test_wavs', v.ref + '.wav');
+      const ref = (this.refs[v.id] ||= sherpa.readWave(file));
+      cfg = { speed: 1.0, referenceAudio: ref.samples, referenceSampleRate: ref.sampleRate, numSteps: 5, extra: { max_reference_audio_len: 10, seed: 42 } };
     } else cfg = { sid: v.sid, speed: 1.0, silenceScale: 0.2 };
     if (PHONEMES.has(v.engine)) {
       this.phon ||= require('piper-phonemize-node');
